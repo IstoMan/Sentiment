@@ -245,26 +245,22 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 ### 5.1 Healthcheck-Gated Compose Startup
 **Why:** Podman 4.9.3 with netavark requires systemd user timers to run healthcheck commands periodically. Without systemd, healthcheck status remains "starting" indefinitely.
 
-**Tested on Podman 5.x by QA:** ✅ Works (healthchecks reach "healthy" status with aardvark-dns and systemd)
+**QA Round 4 (Podman 5.8.8, healthcheck timers emulated, no systemd):** ✅ PASS - Healthcheck-gated `make up` completed in 21s with DB reaching healthy before API startup
 
 ### 5.2 Integration Tests via DNS
 **Why:** DNS resolution of container names (`db`, `sentiment-db`) fails on Podman 4.9.3 netavark networks without proper systemd/aardvark-dns integration.
 
-**Workaround:** Integration tests pass when using direct IP addresses instead of DNS names.
-
-**Tested on Podman 5.x by QA:** ✅ Works (aardvark-dns resolves names properly)
+**QA Round 4 (Podman 5.8.8, healthcheck timers emulated, no systemd):** ✅ PASS - `make test-integration` completed in 4s with 2 tests passed (test_database_connection, test_reviews_table_exists)
 
 ### 5.3 compose.dev.yaml Live Reload with Dependencies
 **Why:** Requires healthcheck-gated startup to work properly.
 
-**Verified manually:** ✅ Exec-form fix allows command override to work (no crash loop). When started without depends_on conditions, `--reload` works correctly.
+**QA Round 4 (Podman 5.8.8):** ✅ PASS - Live reload works, gunicorn is PID 1 with `--reload`, file changes detected and reloaded in ~2s with no rebuild, POST returns 201 in dev mode
 
 ### 5.4 Manual Setup Health Polling
 **Why:** `manual-setup.sh` polls `podman inspect -f '{{.State.Health.Status}}'` which requires healthcheck to reach "healthy" status.
 
-**Status:** Health polling will timeout on Podman 4.9.3 but containers still work.
-
-**Tested on Podman 5.x by QA:** ✅ Works (healthcheck status transitions properly)
+**QA Round 4 (Podman 5.8.8, healthcheck timers emulated):** ✅ PASS - Both happy path (rc=0 in 17s, "✓ Application is healthy" after one poll) and unhealthy path (rc=1 after 30 dots, 76s, with logs printed) verified
 
 ## 6. Changes from QA Round 3
 
@@ -295,23 +291,27 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 - (Note: Still times out on Podman 4.9.3, but logic is correct)
 
 ### P2-6: README Parser ✅
-- Rewrote `check-doc-refs.py` to parse README table dynamically
-- Validates all line numbers in cited ranges
-- Integrated into `make docs-check` target
-- All 38 rows pass validation
+- Rewrote `check-doc-refs.py` to parse both README tables dynamically
+- Validates line numbers are within file bounds
+- Validates expected content tokens appear in cited ranges
+- Checks all #anchor links against GitHub-slugified README headings
+- Integrated into `make test` as prerequisite to pytest
 
 ### P3 Items ✅
 - Removed `flask-cors` import and dependency
 - Removed unused `ARG BUILD_DATE` from builder stage
 - Fixed sqlite datetime warnings in `tests/conftest.py`
-- README:365 `chmod` command already correct (`chmod 755`)
+- Fixed README:365 `chmod 644 db/00-init.sh` (was incorrectly `db/init.sql`)
+- Added timeout to manual-setup.sh DB wait loop with exit 1
+- Removed hard-coded --bind from compose.dev.yaml
+- Added nginx 503 error handling for API restarts
 
 ## 7. Known Limitations
 
 ### Podman 4.9.3 vs 5.x
-- **Healthchecks:** Require systemd user timers on 4.9.x; work automatically on 5.x
+- **Healthchecks:** Require systemd user timers on both 4.9.x and 5.x; QA emulated timers with a loop
 - **DNS Resolution:** Netavark/aardvark-dns not fully functional on 4.9.x without systemd
-- **Recommended:** Use Podman 5.x on systems with systemd for full functionality
+- **Recommended:** Use Podman 5.x on systems with systemd for full functionality (but timers still needed)
 
 ### Workarounds for Podman 4.9.x
 1. Start containers with `podman-compose up -d --no-deps` in dependency order
@@ -328,4 +328,6 @@ All fixable issues from QA Round 3 have been addressed:
 - ✅ Honest verification documentation
 - ✅ Code quality improvements (removed unused dependencies, fixed warnings)
 
-Functionality not working on Podman 4.9.3 is due to known platform limitations with healthchecks and DNS resolution without systemd, not application bugs. QA testing on Podman 5.x confirms these features work correctly.
+Functionality not working on Podman 4.9.3 is due to known platform limitations with healthchecks and DNS resolution without systemd, not application bugs.
+
+**QA Round 4 (Podman 5.8.8, healthcheck timers emulated, no systemd):** All runtime checks passed including exec form/PID 1, live reload, manual-setup (both paths), integration tests (2 passed), healthcheck-gated startup, isolation, restart recovery, and backup/restore. 31 unit tests passed with no warnings even under `-W error`.
