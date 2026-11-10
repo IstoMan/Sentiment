@@ -1,5 +1,7 @@
 """Sentiment Analyzer for Reviews - Main Application"""
 import os
+import time
+import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -28,6 +30,44 @@ else:
     DB_CONFIG['password'] = os.environ.get('DB_PASSWORD', 'changeme')
 
 analyzer = SentimentAnalyzer()
+
+
+def wait_for_db(max_retries=30, delay=2):
+    """Wait for database to be ready with retry logic"""
+    print(f"Waiting for database at {DB_CONFIG['host']}:{DB_CONFIG['port']}...", flush=True)
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            conn = psycopg2.connect(**DB_CONFIG, connect_timeout=5)
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+            cursor.close()
+            conn.close()
+            print(f"✓ Database connection successful on attempt {attempt}", flush=True)
+            return True
+        except (psycopg2.OperationalError, Exception) as e:
+            if attempt < max_retries:
+                print(f"Database not ready (attempt {attempt}/{max_retries}): {str(e)[:100]}", flush=True)
+                time.sleep(delay)
+            else:
+                print(f"✗ Failed to connect to database after {max_retries} attempts", flush=True)
+                print(f"Last error: {e}", flush=True)
+                return False
+    
+    return False
+
+
+# Wait for database at startup
+if __name__ != '__main__':
+    # Running under gunicorn
+    print("=" * 60, flush=True)
+    print("Starting Sentiment Analyzer API", flush=True)
+    print("=" * 60, flush=True)
+    if not wait_for_db():
+        print("WARNING: Database not available at startup", flush=True)
+    else:
+        print("✓ Database ready", flush=True)
+    print("=" * 60, flush=True)
 
 
 def get_db_connection():

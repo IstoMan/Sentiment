@@ -7,20 +7,14 @@ services:
       POSTGRESQL_DATABASE: ${DB_NAME:-sentiment_db}
     secrets:
       - source: db_password
-        target: /run/secrets/db_password
-    env_file:
-      - .env
+        target: POSTGRESQL_PASSWORD
+        type: env
     volumes:
       - db-data:/var/lib/pgsql/data:Z
       - ./db/init.sql:/opt/app-root/src/postgresql-init/init.sql:Z,ro
     networks:
       - backend
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sentiment_user} -d ${DB_NAME:-sentiment_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   api:
     build:
@@ -38,29 +32,21 @@ services:
     secrets:
       - source: db_password
         target: /run/secrets/db_password
-    env_file:
-      - .env
-    ports:
-      - "127.0.0.1:8000:8080"
     networks:
       - frontend
       - backend
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python3.11 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health').read()\" || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   proxy:
-    image: registry.access.redhat.com/ubi9/nginx-122:latest
+    build:
+      context: ./proxy
+      dockerfile: Containerfile
+    image: localhost/sentiment-proxy:1.0.0
     container_name: sentiment-proxy
-    volumes:
-      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:Z,ro
+    ports:
+      - "127.0.0.1:8000:8080"
     networks:
       - frontend
     depends_on:

@@ -3,9 +3,11 @@
 set -euo pipefail
 
 SECRET_NAME="db_password"
-DEFAULT_PASSWORD="changeme_secure_password_$(date +%s)"
+DEFAULT_PASSWORD="secure_$(openssl rand -hex 16 2>/dev/null || date +%s)"
 
 echo "Setting up Podman secret for database password..."
+echo "NOTE: Password is stored in Podman secret, NOT in .env file"
+echo ""
 
 if podman secret exists "$SECRET_NAME" 2>/dev/null; then
     echo "Secret '$SECRET_NAME' already exists."
@@ -19,21 +21,28 @@ if podman secret exists "$SECRET_NAME" 2>/dev/null; then
     fi
 fi
 
-if [ -f .env ]; then
-    if grep -q "^POSTGRESQL_PASSWORD=" .env; then
-        PASSWORD=$(grep "^POSTGRESQL_PASSWORD=" .env | cut -d= -f2)
-        echo "Using password from .env file"
-    else
+# Check if password provided as argument
+if [ $# -gt 0 ]; then
+    PASSWORD="$1"
+    echo "Using provided password"
+elif [ -t 0 ]; then
+    # Interactive mode
+    read -sp "Enter database password (or press Enter to generate): " PASSWORD
+    echo
+    if [ -z "$PASSWORD" ]; then
         PASSWORD="$DEFAULT_PASSWORD"
-        echo "POSTGRESQL_PASSWORD not found in .env, using generated password"
+        echo "Generated secure password"
     fi
 else
+    # Non-interactive mode
     PASSWORD="$DEFAULT_PASSWORD"
-    echo "No .env file found, using generated password: $PASSWORD"
-    echo "POSTGRESQL_PASSWORD=$PASSWORD" >> .env
-    echo "Password saved to .env file"
+    echo "Generated secure password: $PASSWORD"
 fi
 
 echo "$PASSWORD" | podman secret create "$SECRET_NAME" -
 
 echo "✓ Secret '$SECRET_NAME' created successfully"
+echo ""
+echo "To view or update the secret:"
+echo "  podman secret rm $SECRET_NAME"
+echo "  echo 'new_password' | podman secret create $SECRET_NAME -"
