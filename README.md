@@ -594,3 +594,26 @@ This is a course project and not actively maintained, but suggestions for improv
 ## Author
 
 DO188 Course Project - Red Hat Container Technologies
+
+## Screenshots
+
+### Main Application Interface
+![Main Page](docs/screenshots/01-main-page.png)
+*Clean, modern UI for sentiment analysis*
+
+### Review Input
+![Review Input](docs/screenshots/02-review-input.png)
+*Submit product or movie reviews for analysis*
+
+### Analysis Results
+![Positive Result](docs/screenshots/03-positive-result.png)
+*Real-time sentiment classification with detailed scores*
+
+### Statistics Dashboard  
+![Statistics](docs/screenshots/04-statistics.png)
+*Positive/negative percentages and analytics*
+
+### Recent Reviews
+![Recent Reviews](docs/screenshots/05-recent-reviews.png)
+*History of analyzed reviews with sentiment labels*
+
