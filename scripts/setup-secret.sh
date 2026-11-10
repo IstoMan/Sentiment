@@ -11,7 +11,7 @@ echo ""
 
 # Check if --force flag is provided
 FORCE=false
-if [ "$1" = "--force" ]; then
+if [ "${1:-}" = "--force" ]; then
     FORCE=true
 fi
 
@@ -25,10 +25,10 @@ if podman secret exists "$SECRET_NAME" 2>/dev/null; then
 fi
 
 # Check if password provided as argument (skip --force)
-if [ $# -gt 0 ] && [ "$1" != "--force" ]; then
+if [ $# -gt 0 ] && [ "${1:-}" != "--force" ]; then
     PASSWORD="$1"
     echo "Using provided password"
-elif [ $# -gt 1 ] && [ "$1" = "--force" ]; then
+elif [ $# -gt 1 ] && [ "${1:-}" = "--force" ]; then
     PASSWORD="$2"
     echo "Using provided password"
 elif [ -t 0 ] && [ "$FORCE" = false ]; then
