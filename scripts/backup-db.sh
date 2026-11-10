@@ -11,7 +11,7 @@ mkdir -p "$BACKUP_DIR"
 
 echo "Backing up database to $BACKUP_FILE..."
 
-podman exec "${PROJECT_NAME}-db" pg_dump -U sentiment_user sentiment_db > "$BACKUP_FILE"
+podman exec "${PROJECT_NAME}-db" pg_dump -U sentiment_user sentiment_db --clean --if-exists > "$BACKUP_FILE"
 
 echo "✓ Database backed up successfully"
 echo "Backup size: $(du -h "$BACKUP_FILE" | cut -f1)"
