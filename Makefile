@@ -54,7 +54,9 @@ build:
 		-f Containerfile .
 	@echo "✓ Built: $(IMAGE_NAME)"
 
-up: setup
+up:
+	@if [ ! -f .env ]; then cp .env.example .env; echo "Created .env from example"; fi
+	@./scripts/setup-secret.sh
 	podman-compose up -d
 	@echo "✓ Services started. Access at http://127.0.0.1:8000"
 

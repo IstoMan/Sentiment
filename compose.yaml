@@ -17,11 +17,19 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRESQL_USER:-sentiment_user} -d $${POSTGRESQL_DATABASE:-sentiment_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
       context: .
       dockerfile: Containerfile
+      args:
+        APP_VERSION: "1.0.0"
+        BUILD_DATE: "${BUILD_DATE:-unknown}"
     image: localhost/sentiment-analyzer:1.0.0
     container_name: sentiment-api
     environment:
@@ -31,6 +39,7 @@ services:
       DB_USER: ${DB_USER:-sentiment_user}
       DB_PASSWORD_FILE: /run/secrets/db_password
       PORT: 8080
+      WAIT_FOR_DB: "1"
     secrets:
       - source: db_password
         target: /run/secrets/db_password
@@ -38,8 +47,15 @@ services:
       - frontend
       - backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3.11", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   proxy:
     build:

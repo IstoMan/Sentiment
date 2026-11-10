@@ -9,11 +9,14 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
+# Set test environment variables before importing app
 os.environ['DB_HOST'] = 'localhost'
 os.environ['DB_PORT'] = '5432'
 os.environ['DB_NAME'] = 'test_db'
 os.environ['DB_USER'] = 'test_user'
 os.environ['DB_PASSWORD'] = 'test_pass'
+os.environ['WAIT_FOR_DB'] = '0'  # Disable DB wait for fast tests
+os.environ['TESTING'] = '1'  # Allow tests to run without strict password checks
 
 
 class SQLiteAdapter:

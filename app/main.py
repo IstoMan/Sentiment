@@ -2,7 +2,7 @@
 import os
 import time
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from flask import Flask, jsonify, render_template, request
@@ -26,8 +26,15 @@ SECRET_FILE = os.environ.get('DB_PASSWORD_FILE', '/run/secrets/db_password')
 if os.path.exists(SECRET_FILE):
     with open(SECRET_FILE, 'r') as f:
         DB_CONFIG['password'] = f.read().strip()
+elif os.environ.get('DB_PASSWORD'):
+    DB_CONFIG['password'] = os.environ['DB_PASSWORD']
+elif os.environ.get('TESTING'):
+    # Allow tests to run without a password
+    DB_CONFIG['password'] = 'test'
 else:
-    DB_CONFIG['password'] = os.environ.get('DB_PASSWORD', 'changeme')
+    raise RuntimeError(
+        "Database password not provided. Set DB_PASSWORD_FILE or DB_PASSWORD environment variable."
+    )
 
 analyzer = SentimentAnalyzer()
 
@@ -57,9 +64,9 @@ def wait_for_db(max_retries=30, delay=2):
     return False
 
 
-# Wait for database at startup
-if __name__ != '__main__':
-    # Running under gunicorn
+# Wait for database at startup (controlled by environment variable)
+if __name__ != '__main__' and os.environ.get('WAIT_FOR_DB', '0') == '1':
+    # Running under gunicorn and explicitly requested
     print("=" * 60, flush=True)
     print("Starting Sentiment Analyzer API", flush=True)
     print("=" * 60, flush=True)
@@ -91,118 +98,165 @@ def health():
         cursor.close()
         conn.close()
         db_status = 'healthy'
+        status_code = 200
     except Exception as e:
         db_status = f'unhealthy: {str(e)}'
+        status_code = 503
     
     return jsonify({
         'status': 'healthy' if db_status == 'healthy' else 'degraded',
         'database': db_status,
         'analyzer': 'loaded'
-    })
+    }), status_code
 
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_review():
     """Analyze sentiment of a review"""
-    data = request.get_json()
+    # Parse JSON with error handling
+    data = request.get_json(silent=True)
     
-    if not data or 'text' not in data:
-        return jsonify({'error': 'Missing text field'}), 400
+    if data is None:
+        return jsonify({'error': 'Invalid JSON or unsupported content type'}), 400
+    
+    if 'text' not in data:
+        return jsonify({'error': 'Missing required field: text'}), 400
     
     text = data['text']
+    
+    # Validate text is a string
+    if not isinstance(text, str):
+        return jsonify({'error': 'Field "text" must be a string'}), 400
+    
+    # Validate text is not empty
     if not text.strip():
-        return jsonify({'error': 'Empty text'}), 400
+        return jsonify({'error': 'Field "text" cannot be empty'}), 400
     
-    preprocessed = preprocess_text(text)
-    result = analyzer.analyze(preprocessed)
+    # Validate text length (max 5000 characters)
+    if len(text) > 5000:
+        return jsonify({'error': 'Field "text" exceeds maximum length of 5000 characters'}), 413
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        '''INSERT INTO reviews (original_text, preprocessed_text, sentiment, 
-           compound_score, positive_score, negative_score, neutral_score, created_at)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-           RETURNING id''',
-        (text, preprocessed, result['sentiment'], result['compound'], 
-         result['positive'], result['negative'], result['neutral'], datetime.utcnow())
-    )
-    review_id = cursor.fetchone()[0]
-    conn.commit()
-    cursor.close()
-    conn.close()
-    
-    return jsonify({
-        'id': review_id,
-        'text': text,
-        'preprocessed': preprocessed,
-        **result
-    }), 201
+    try:
+        preprocessed = preprocess_text(text)
+        result = analyzer.analyze(preprocessed)
+        
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''INSERT INTO reviews (original_text, preprocessed_text, sentiment, 
+                   compound_score, positive_score, negative_score, neutral_score, created_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   RETURNING id''',
+                (text, preprocessed, result['sentiment'], result['compound'], 
+                 result['positive'], result['negative'], result['neutral'], datetime.now(datetime.UTC))
+            )
+            review_id = cursor.fetchone()[0]
+            conn.commit()
+            cursor.close()
+            
+            return jsonify({
+                'id': review_id,
+                'text': text,
+                'preprocessed': preprocessed,
+                **result
+            }), 201
+        finally:
+            conn.close()
+    except psycopg2.Error as e:
+        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+    except Exception as e:
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/api/reviews', methods=['GET'])
 def get_reviews():
     """Get all reviews with pagination"""
-    limit = request.args.get('limit', 50, type=int)
-    offset = request.args.get('offset', 0, type=int)
+    # Validate and constrain pagination parameters
+    try:
+        limit = max(1, min(request.args.get('limit', 50, type=int), 100))
+        offset = max(0, request.args.get('offset', 0, type=int))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid pagination parameters'}), 400
     
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    cursor.execute('SELECT COUNT(*) as total FROM reviews')
-    total = cursor.fetchone()['total']
-    
-    cursor.execute(
-        '''SELECT id, original_text, sentiment, compound_score, 
-           positive_score, negative_score, neutral_score, created_at
-           FROM reviews ORDER BY created_at DESC LIMIT %s OFFSET %s''',
-        (limit, offset)
-    )
-    reviews = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    return jsonify({
-        'total': total,
-        'limit': limit,
-        'offset': offset,
-        'reviews': reviews
-    })
+    try:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('SELECT COUNT(*) as total FROM reviews')
+            total = cursor.fetchone()['total']
+            
+            cursor.execute(
+                '''SELECT id, original_text, sentiment, compound_score, 
+                   positive_score, negative_score, neutral_score, created_at
+                   FROM reviews ORDER BY created_at DESC LIMIT %s OFFSET %s''',
+                (limit, offset)
+            )
+            reviews = cursor.fetchall()
+            cursor.close()
+            
+            return jsonify({
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'reviews': reviews
+            })
+        finally:
+            conn.close()
+    except psycopg2.Error as e:
+        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+    except Exception as e:
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """Get sentiment statistics"""
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    cursor.execute('''
-        SELECT 
-            COUNT(*) as total_reviews,
-            SUM(CASE WHEN sentiment = 'positive' THEN 1 ELSE 0 END) as positive_count,
-            SUM(CASE WHEN sentiment = 'negative' THEN 1 ELSE 0 END) as negative_count,
-            SUM(CASE WHEN sentiment = 'neutral' THEN 1 ELSE 0 END) as neutral_count,
-            AVG(compound_score) as avg_compound
-        FROM reviews
-    ''')
-    stats = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    
-    total = stats['total_reviews'] or 0
-    positive = stats['positive_count'] or 0
-    negative = stats['negative_count'] or 0
-    neutral = stats['neutral_count'] or 0
-    
-    return jsonify({
-        'total_reviews': total,
-        'positive_count': positive,
-        'negative_count': negative,
-        'neutral_count': neutral,
-        'positive_percentage': round((positive / total * 100) if total > 0 else 0, 2),
-        'negative_percentage': round((negative / total * 100) if total > 0 else 0, 2),
-        'neutral_percentage': round((neutral / total * 100) if total > 0 else 0, 2),
-        'average_compound': round(stats['avg_compound'] or 0, 4)
-    })
+    try:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('''
+                SELECT 
+                    COUNT(*) as total_reviews,
+                    SUM(CASE WHEN sentiment = 'positive' THEN 1 ELSE 0 END) as positive_count,
+                    SUM(CASE WHEN sentiment = 'negative' THEN 1 ELSE 0 END) as negative_count,
+                    SUM(CASE WHEN sentiment = 'neutral' THEN 1 ELSE 0 END) as neutral_count,
+                    AVG(compound_score) as avg_compound
+                FROM reviews
+            ''')
+            stats = cursor.fetchone()
+            cursor.close()
+            
+            total = stats['total_reviews'] or 0
+            positive = stats['positive_count'] or 0
+            negative = stats['negative_count'] or 0
+            neutral = stats['neutral_count'] or 0
+            
+            return jsonify({
+                'total_reviews': total,
+                'positive_count': positive,
+                'negative_count': negative,
+                'neutral_count': neutral,
+                'positive_percentage': round((positive / total * 100) if total > 0 else 0, 2),
+                'negative_percentage': round((negative / total * 100) if total > 0 else 0, 2),
+                'neutral_percentage': round((neutral / total * 100) if total > 0 else 0, 2),
+                'average_compound': round(stats['avg_compound'] or 0, 4)
+            })
+        finally:
+            conn.close()
+    except psycopg2.Error as e:
+        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+    except Exception as e:
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(psycopg2.Error)
+def handle_db_error(e):
+    """Handle database errors globally"""
+    return jsonify({'error': 'Database error', 'detail': str(e)}), 503
 
 
 if __name__ == '__main__':
