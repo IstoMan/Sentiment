@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROJECT_NAME="sentiment"
-VOLUME_NAME="${PROJECT_NAME}_db_data"
+VOLUME_NAME="${PROJECT_NAME}_db-data"
 BACKUP_DIR="./backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 EXPORT_FILE="${BACKUP_DIR}/volume_${TIMESTAMP}.tar"

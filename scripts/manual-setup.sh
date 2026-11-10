@@ -31,10 +31,12 @@ if ! podman secret exists "$DB_SECRET_NAME" 2>/dev/null; then
     exit 1
 fi
 
-echo "Step 1: Creating networks..."
-podman network exists "$NETWORK_FRONTEND" 2>/dev/null || podman network create "$NETWORK_FRONTEND"
-podman network exists "$NETWORK_BACKEND" 2>/dev/null || podman network create "$NETWORK_BACKEND"
-echo "✓ Networks created: $NETWORK_FRONTEND, $NETWORK_BACKEND"
+echo "Step 1: Creating networks with isolation..."
+podman network exists "$NETWORK_FRONTEND" 2>/dev/null || \
+    podman network create --opt isolate=true "$NETWORK_FRONTEND"
+podman network exists "$NETWORK_BACKEND" 2>/dev/null || \
+    podman network create --internal --opt isolate=true "$NETWORK_BACKEND"
+echo "✓ Networks created: $NETWORK_FRONTEND (isolated), $NETWORK_BACKEND (internal + isolated)"
 
 echo ""
 echo "Step 2: Creating volume..."
@@ -50,13 +52,13 @@ podman run -d \
     -e POSTGRESQL_DATABASE="$DB_NAME" \
     --secret "$DB_SECRET_NAME",type=env,target=POSTGRESQL_PASSWORD \
     -v "$VOLUME_DATA:/var/lib/pgsql/data:Z" \
-    -v "./db/init.sql:/opt/app-root/src/postgresql-init/init.sql:Z,ro" \
+    -v "./db/00-init.sh:/opt/app-root/src/postgresql-start/00-init.sh:Z,ro" \
     --restart unless-stopped \
     --health-cmd "pg_isready -U $DB_USER -d $DB_NAME" \
     --health-interval 10s \
     --health-timeout 5s \
     --health-retries 5 \
-    quay.io/sclorg/postgresql-16-c9s:latest
+    quay.io/sclorg/postgresql-16-c9s:20261104
 
 echo "Waiting for database to be healthy..."
 until [ "$(podman inspect --format='{{.State.Health.Status}}' ${PROJECT_NAME}-db)" = "healthy" ]; do
@@ -97,14 +99,15 @@ sleep 5
 echo "✓ Application started"
 
 echo ""
-echo "Step 6: Starting nginx proxy..."
+echo "Step 6: Building and starting proxy..."
+podman build -t "localhost/${PROJECT_NAME}-proxy:${VERSION}" proxy/
+
 podman run -d \
     --name "${PROJECT_NAME}-proxy" \
     --network "$NETWORK_FRONTEND" \
     -p "127.0.0.1:8000:8080" \
-    -v "./proxy/nginx.conf:/etc/nginx/nginx.conf:Z,ro" \
     --restart unless-stopped \
-    registry.access.redhat.com/ubi9/nginx-122:latest
+    "localhost/${PROJECT_NAME}-proxy:${VERSION}"
 
 echo "✓ Proxy started"
 

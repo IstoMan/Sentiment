@@ -245,6 +245,12 @@
     <script>
         const API_BASE = '/api';
         
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -276,9 +282,9 @@
                 
                 const data = await response.json();
                 
-                resultDiv.className = `result ${data.sentiment}`;
+                resultDiv.className = `result ${escapeHtml(data.sentiment)}`;
                 resultDiv.innerHTML = `
-                    <h3>Sentiment: ${data.sentiment.toUpperCase()}</h3>
+                    <h3>Sentiment: ${escapeHtml(data.sentiment).toUpperCase()}</h3>
                     <p><strong>Compound Score:</strong> ${data.compound.toFixed(4)}</p>
                     <p><strong>Positive:</strong> ${(data.positive * 100).toFixed(1)}% | 
                        <strong>Negative:</strong> ${(data.negative * 100).toFixed(1)}% | 
@@ -345,10 +351,10 @@
                 reviewsDiv.innerHTML = data.reviews.map(review => `
                     <div class="review-item">
                         <div>
-                            <span class="review-sentiment ${review.sentiment}">${review.sentiment}</span>
+                            <span class="review-sentiment ${escapeHtml(review.sentiment)}">${escapeHtml(review.sentiment)}</span>
                             <small style="float: right; color: #666;">${new Date(review.created_at).toLocaleString()}</small>
                         </div>
-                        <p style="margin-top: 10px;">${review.original_text.substring(0, 200)}${review.original_text.length > 200 ? '...' : ''}</p>
+                        <p style="margin-top: 10px;">${escapeHtml(review.original_text.substring(0, 200))}${review.original_text.length > 200 ? '...' : ''}</p>
                         <small style="color: #666;">Score: ${review.compound_score.toFixed(4)}</small>
                     </div>
                 `).join('');

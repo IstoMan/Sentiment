@@ -1,6 +1,8 @@
+name: sentiment
+
 services:
   db:
-    image: quay.io/sclorg/postgresql-16-c9s:latest
+    image: quay.io/sclorg/postgresql-16-c9s:20261104
     container_name: sentiment-db
     environment:
       POSTGRESQL_USER: ${DB_USER:-sentiment_user}
@@ -56,8 +58,13 @@ services:
 networks:
   frontend:
     driver: bridge
+    driver_opts:
+      isolate: "true"
   backend:
     driver: bridge
+    internal: true
+    driver_opts:
+      isolate: "true"
 
 volumes:
   db-data:

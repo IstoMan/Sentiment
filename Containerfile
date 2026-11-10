@@ -1,6 +1,6 @@
 # Multi-stage Containerfile using Red Hat Universal Base Image (UBI)
 # Stage 1: Builder - install dependencies and download VADER lexicon
-FROM registry.access.redhat.com/ubi9/python-311:latest AS builder
+FROM registry.access.redhat.com/ubi9/python-311:9.8-1779945715 AS builder
 
 ARG APP_VERSION=1.0.0
 ARG BUILD_DATE
@@ -21,7 +21,7 @@ RUN python -c "from vaderSentiment.vaderSentiment import SentimentIntensityAnaly
     echo "VADER lexicon downloaded and cached"
 
 # Stage 2: Runtime - minimal image with application
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS runtime
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1794186349 AS runtime
 
 ARG APP_VERSION=1.0.0
 ARG BUILD_DATE
@@ -44,7 +44,7 @@ LABEL name="sentiment-analyzer" \
       io.k8s.display-name="Sentiment Analyzer" \
       io.openshift.tags="python,flask,sentiment,vader"
 
-RUN microdnf install -y python3.11 shadow-utils && \
+RUN microdnf install -y python3.11 shadow-utils iproute && \
     microdnf clean all && \
     rm -rf /var/cache/yum
 
