@@ -2,26 +2,42 @@
 # Manual Podman setup script - demonstrates all concepts without compose
 set -euo pipefail
 
-# Cleanup function to remove containers on failure
+PROJECT_NAME="sentiment"
+
+# Array to track containers created by this run
+CREATED_CONTAINERS=()
+
+# Cleanup function - removes only containers created by this run
 cleanup_on_error() {
     local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
+    trap - EXIT  # Clear trap to avoid recursion
+    
+    if [ $exit_code -ne 0 ] && [ ${#CREATED_CONTAINERS[@]} -gt 0 ]; then
         echo ""
-        echo "⚠ Setup failed. Cleaning up containers..."
-        podman stop sentiment-db 2>/dev/null || true
-        podman stop sentiment-api 2>/dev/null || true
-        podman stop sentiment-proxy 2>/dev/null || true
-        podman rm sentiment-db 2>/dev/null || true
-        podman rm sentiment-api 2>/dev/null || true
-        podman rm sentiment-proxy 2>/dev/null || true
-        echo "✓ Containers removed"
+        echo "⚠ Setup failed. Removing containers created by this run: ${CREATED_CONTAINERS[*]}"
+        # Remove in reverse order
+        for ((i=${#CREATED_CONTAINERS[@]}-1; i>=0; i--)); do
+            podman rm -f "${CREATED_CONTAINERS[i]}" 2>/dev/null || true
+        done
+        echo "✓ Cleanup complete"
     fi
+    exit $exit_code
 }
 
-# Set trap to cleanup on error
+# Set trap to cleanup on error or interrupt
 trap cleanup_on_error EXIT
+trap 'exit 130' INT TERM  # Ctrl-C should trigger cleanup
 
-PROJECT_NAME="sentiment"
+# Pre-flight check: fail early if target containers already exist
+for container_name in "${PROJECT_NAME}-db" "${PROJECT_NAME}-api" "${PROJECT_NAME}-proxy"; do
+    if podman container exists "$container_name" 2>/dev/null; then
+        echo "Error: Container '$container_name' already exists."
+        echo "Stop and remove it first, or use a different project name."
+        echo ""
+        echo "To clean up: ./scripts/manual-stop.sh"
+        exit 1
+    fi
+done
 VERSION="${VERSION:-1.0.0}"
 IMAGE_NAME="localhost/${PROJECT_NAME}-analyzer:${VERSION}"
 DB_SECRET_NAME="db_password"
@@ -78,6 +94,7 @@ podman run -d \
     --health-timeout 5s \
     --health-retries 5 \
     quay.io/sclorg/postgresql-16-c9s:20261104
+CREATED_CONTAINERS+=("${PROJECT_NAME}-db")
 
 echo "Waiting for database to be healthy..."
 COUNTER=0
@@ -123,6 +140,7 @@ podman run -d \
     --health-cmd 'curl -fsS http://localhost:8080/health || exit 1' \
     --health-interval 10s \
     "$IMAGE_NAME"
+CREATED_CONTAINERS+=("${PROJECT_NAME}-api")
 
 echo "Waiting for application to be ready..."
 for i in {1..30}; do
@@ -151,6 +169,7 @@ podman run -d \
     -p "127.0.0.1:8000:8080" \
     --restart unless-stopped \
     "localhost/${PROJECT_NAME}-proxy:${VERSION}"
+CREATED_CONTAINERS+=("${PROJECT_NAME}-proxy")
 
 echo "✓ Proxy started"
 
@@ -160,7 +179,7 @@ echo ""
 echo "Application is now running at: http://127.0.0.1:8000"
 
 # Clear trap on successful completion
-trap - EXIT
+trap - EXIT INT TERM
 
 echo ""
 echo "Useful commands:"

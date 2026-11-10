@@ -5,10 +5,10 @@ set -euo pipefail
 PROJECT_NAME="sentiment"
 
 echo "Stopping containers..."
-podman stop -t 10 "${PROJECT_NAME}-proxy" "${PROJECT_NAME}-api" "${PROJECT_NAME}-db" 2>/dev/null || true
+podman stop -t 10 --ignore "${PROJECT_NAME}-proxy" "${PROJECT_NAME}-api" "${PROJECT_NAME}-db" 2>/dev/null || true
 
 echo "Removing containers..."
-podman rm "${PROJECT_NAME}-proxy" "${PROJECT_NAME}-api" "${PROJECT_NAME}-db" 2>/dev/null || true
+podman rm -f --ignore "${PROJECT_NAME}-proxy" "${PROJECT_NAME}-api" "${PROJECT_NAME}-db" 2>/dev/null || true
 
 echo "Removing networks..."
 podman network rm "${PROJECT_NAME}_frontend" "${PROJECT_NAME}_backend" 2>/dev/null || true

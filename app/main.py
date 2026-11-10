@@ -169,7 +169,7 @@ def analyze_review():
             conn.close()
     except psycopg2.Error as e:
         app.logger.exception("Database error in analyze_review")
-        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+        return jsonify({'error': 'Database error', 'detail': 'Internal database error occurred'}), 503
     except Exception as e:
         app.logger.exception("Internal server error in analyze_review")
         return jsonify({'error': 'Internal server error'}), 500
@@ -212,7 +212,7 @@ def get_reviews():
             conn.close()
     except psycopg2.Error as e:
         app.logger.exception("Database error in get_reviews")
-        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+        return jsonify({'error': 'Database error', 'detail': 'Internal database error occurred'}), 503
     except Exception as e:
         app.logger.exception("Internal server error in get_reviews")
         return jsonify({'error': 'Internal server error'}), 500
@@ -257,7 +257,7 @@ def get_stats():
             conn.close()
     except psycopg2.Error as e:
         app.logger.exception("Database error in get_stats")
-        return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+        return jsonify({'error': 'Database error', 'detail': 'Internal database error occurred'}), 503
     except Exception as e:
         app.logger.exception("Internal server error in get_stats")
         return jsonify({'error': 'Internal server error'}), 500
@@ -266,7 +266,8 @@ def get_stats():
 @app.errorhandler(psycopg2.Error)
 def handle_db_error(e):
     """Handle database errors globally"""
-    return jsonify({'error': 'Database error', 'detail': str(e)}), 503
+    app.logger.exception("Global database error handler")
+    return jsonify({'error': 'Database error', 'detail': 'Internal database error occurred'}), 503
 
 
 if __name__ == '__main__':
