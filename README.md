@@ -183,7 +183,7 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **No published DB port** | `compose.yaml:4-25` | Database not exposed to host |
 | **Fully qualified tags (no latest)** | `Makefile:4-5, compose.yaml:5, 33, 64` | All base images pinned to specific versions |
 | **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:117-122` | Build with `APP_VERSION` and `BUILD_DATE` |
-| **podman run manual** | `scripts/manual-setup.sh:83-96, 127-142, 166-171` | All run parameters explicitly shown |
+| **podman run manual** | `scripts/manual-setup.sh:84-97, 128-143, 167-172` | All run parameters explicitly shown |
 | **podman network create** | `scripts/manual-setup.sh:70-74` | Manual network setup with isolation |
 | **podman secret create** | `scripts/setup-secret.sh:48` | Create secret from stdin |
 | **podman volume create** | `scripts/manual-setup.sh:78` | Named volume creation |
@@ -209,8 +209,8 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **Rootless subuid** | Implicit | All commands run rootless (no sudo) |
 | **Copy-on-write layers** | `Containerfile:14-18, 69-72` | Optimized layer order for caching (requirements before code) |
 | **DB env vars on empty volume** | [README § Issue: Database not initializing](#issue-database-not-initializing) | Init script runs on every start (idempotent) |
-| **Default network DNS issue** | [README § Issue: podman-compose can't find services](#issue-podman-compose-cant-find-services) | User-created networks required for DNS (see lines 334-340) |
-| **App binding (0.0.0.0)** | `app/main.py:273-275` and `Containerfile:41-44` | Gunicorn binds 0.0.0.0:$PORT; ENV PORT set in Containerfile |
+| **Default network DNS issue** | [README § Issue: podman-compose can't find services](#issue-podman-compose-cant-find-services) | User-created networks required for DNS (see lines 336-342) |
+| **App binding (0.0.0.0)** | `app/main.py:274-276` and `Containerfile:41-44` | Gunicorn binds 0.0.0.0:$PORT; ENV PORT set in Containerfile |
 | **compose up -d/down/down -v** | `Makefile:60, 64, 67` | Detached mode, cleanup, volume cleanup |
 | **podman ps** | `Makefile:74` | List containers (podman-compose ps) |
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
