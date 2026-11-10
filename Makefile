@@ -81,11 +81,11 @@ manual-stop:
 	@chmod +x scripts/manual-stop.sh
 	@./scripts/manual-stop.sh
 
-test:
-	python3 -m pytest tests/ -v
-
 docs-check:
 	python3 scripts/check-doc-refs.py
+
+test: docs-check
+	python3 -m pytest tests/ -v
 
 test-cov:
 	python3 -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
