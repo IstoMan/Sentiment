@@ -173,18 +173,18 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **Named volume** | `compose.yaml:14-16, 85-87` | `db-data` for PostgreSQL persistence |
 | **Bind mount with :Z** | `compose.yaml:16` | SELinux label for `db/00-init.sh` |
 | **Two networks (real isolation)** | `compose.yaml:17-18, 46-48, 68-69, 74-83` | frontend + backend with `isolate` and `internal` options |
-| **User-created network with opts** | `scripts/manual-setup.sh:35-38` | Networks with `--opt isolate=true` and `--internal` |
+| **User-created network with opts** | `scripts/manual-setup.sh:54-57` | Networks with `--opt isolate=true` and `--internal` |
 | **depends_on with condition** | `compose.yaml:49-51, 70-71` | Service startup ordering: `service_healthy` |
 | **container_name** | `compose.yaml:6, 34, 65` | Named containers for easy reference |
 | **ports (127.0.0.1)** | `compose.yaml:66-67` | Rootless-friendly binding to loopback |
 | **PostgreSQL UBI image** | `compose.yaml:5` | `quay.io/sclorg/postgresql-16-c9s:20261104` (pinned, no `latest`) |
 | **No published DB port** | `compose.yaml:4-25` | Database not exposed to host |
 | **Fully qualified tags (no latest)** | `Makefile:4-5, compose.yaml:5, 33, 64` | All base images pinned to specific versions |
-| **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:81-87` | Build with `APP_VERSION` and `BUILD_DATE` |
-| **podman run manual** | `scripts/manual-setup.sh:49-61, 91-107, 127-132` | All run parameters explicitly shown |
-| **podman network create** | `scripts/manual-setup.sh:35-38` | Manual network setup with isolation |
+| **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:100-106` | Build with `APP_VERSION` and `BUILD_DATE` |
+| **podman run manual** | `scripts/manual-setup.sh:69-82, 110-125, 148-153` | All run parameters explicitly shown |
+| **podman network create** | `scripts/manual-setup.sh:54-57` | Manual network setup with isolation |
 | **podman secret create** | `scripts/setup-secret.sh:48` | Create secret from stdin |
-| **podman volume create** | `scripts/manual-setup.sh:43` | Named volume creation |
+| **podman volume create** | `scripts/manual-setup.sh:62` | Named volume creation |
 | **podman save/load** | `scripts/save-image.sh:14` | Image distribution as tarball |
 | **podman generate/kube** | `scripts/generate-kube.sh:14-24` | Export to Kubernetes YAML (handles pods) |
 | **pg_dump backup** | `scripts/backup-db.sh:14` | Database logical backup |
@@ -202,13 +202,13 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 
 | Concept | Location | Description |
 |---------|----------|-------------|
-| **registries.conf concepts** | `scripts/push-image.sh:1-10` | Fully qualified registry names (quay.io, docker.io) |
+| **registries.conf concepts** | `scripts/push-image.sh:11-21` | Fully qualified registry names (quay.io, docker.io) |
 | **UBI variants** | `Containerfile:3, 35` | `ubi9/python-311` (full) → `ubi-minimal` (runtime) |
 | **Rootless subuid** | Implicit | All commands run rootless (no sudo) |
-| **Copy-on-write layers** | `Containerfile:14-17` | Optimized layer order for caching |
+| **Copy-on-write layers** | `Containerfile:14-18, 69-72` | Optimized layer order for caching (requirements before code) |
 | **DB env vars on empty volume** | [README § Issue: Database not initializing](#issue-database-not-initializing) | Init script runs on every start (idempotent) |
-| **Default network DNS issue** | [README § Network Topology](#network-topology) | User-created networks required for DNS |
-| **App binding (0.0.0.0)** | `app/main.py:270-271` | Gunicorn binds 0.0.0.0:$PORT (ENV PORT in `Containerfile:44`) |
+| **Default network DNS issue** | [README § Network Topology](#network-topology) | User-created networks required for DNS (see lines 324-330) |
+| **App binding (0.0.0.0)** | `app/main.py:273-274` and `Containerfile:41-44` | Gunicorn binds 0.0.0.0:$PORT; ENV PORT set in Containerfile |
 | **compose up -d/down/down -v** | `Makefile:60, 64, 67` | Detached mode, cleanup, volume cleanup |
 | **podman ps** | `Makefile:74` | List containers (podman-compose ps) |
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
