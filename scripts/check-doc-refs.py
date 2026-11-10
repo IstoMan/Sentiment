@@ -189,14 +189,18 @@ def check_token_in_range(concept, file_path, lines, base_path='.'):
     except Exception as e:
         return False
     
-    # Check if token appears in ANY line in the range
-    pattern = re.compile(expected_token, re.IGNORECASE | re.MULTILINE)
+    # Concatenate all lines in range for multi-line pattern matching
+    range_lines = []
     for line_num in lines:
         if line_num < 1 or line_num > len(file_lines):
             continue
-        line_content = file_lines[line_num - 1]
-        if pattern.search(line_content):
-            return True
+        range_lines.append(file_lines[line_num - 1])
+    
+    # Check pattern against concatenated content
+    combined_content = '\n'.join(range_lines)
+    pattern = re.compile(expected_token, re.IGNORECASE | re.DOTALL)
+    if pattern.search(combined_content):
+        return True
     
     return False
 

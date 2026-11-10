@@ -159,17 +159,17 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 
 | Concept | Location | Description |
 |---------|----------|-------------|
-| **Multi-stage Containerfile** | `Containerfile:3-22, 24-30, 32-79` | Builder stage (Python 3.11) + test stage + runtime stage (UBI minimal) |
-| **UBI Base Images** | `Containerfile:3, 32` | Uses `ubi9/python-311:9.8-*` for builder and `ubi-minimal:9.8-*` for runtime |
-| **Non-root USER** | `Containerfile:61-65, 71` | useradd uid=1001, runs as UID 1001 (appuser) |
-| **ARG + ENV with defaults** | `Containerfile:5-6, 34-43` | `${APP_VERSION}`, `${PORT:-8080}` |
-| **EXPOSE** | `Containerfile:73` | Port 8080 (>1024 for rootless) |
-| **LABEL** | `Containerfile:45-53` | Metadata: name, version, description, maintainer, build-date |
-| **Exec-form ENTRYPOINT/CMD** | `Containerfile:78-79` | JSON array format: `["gunicorn"]`, `["--workers", "2", ...]` |
-| **Layer caching optimization** | `Containerfile:15-18, 69` | Copy requirements.txt before app code |
-| **COPY --from=builder** | `Containerfile:59` | Copy venv from builder stage |
+| **Multi-stage Containerfile** | `Containerfile:3-20, 23-32, 35-82` | Builder stage (Python 3.11) + test stage + runtime stage (UBI minimal) |
+| **UBI Base Images** | `Containerfile:3, 35` | Uses `ubi9/python-311:9.8-*` for builder and `ubi-minimal:9.8-*` for runtime |
+| **Non-root USER** | `Containerfile:64-68, 74` | useradd uid=1001, runs as UID 1001 (appuser) |
+| **ARG + ENV with defaults** | `Containerfile:5-6, 37-46` | `${APP_VERSION}`, `${PORT:-8080}` |
+| **EXPOSE** | `Containerfile:76` | Port 8080 (>1024 for rootless) |
+| **LABEL** | `Containerfile:48-56` | Metadata: name, version, description, maintainer, build-date |
+| **Exec-form ENTRYPOINT/CMD** | `Containerfile:81-82` | JSON array format: `["gunicorn"]`, `["--workers", "2", ...]` |
+| **Layer caching optimization** | `Containerfile:14-17, 72` | Copy requirements.txt before app code |
+| **COPY --from=builder** | `Containerfile:62` | Copy venv from builder stage |
 | **Podman secret (file)** | `compose.yaml:10-13, 43-45, 89-91` | DB password via `/run/secrets/db_password` (file) and type=env |
-| **Secret consumption in code** | `app/main.py:25-37` | Reads from `DB_PASSWORD_FILE` with fallback |
+| **Secret consumption in code** | `app/main.py:23-35` | Reads from `DB_PASSWORD_FILE` with fallback |
 | **Named volume** | `compose.yaml:14-16, 85-87` | `db-data` for PostgreSQL persistence |
 | **Bind mount with :Z** | `compose.yaml:16` | SELinux label for `db/00-init.sh` |
 | **Two networks (real isolation)** | `compose.yaml:17-18, 46-48, 68-69, 74-83` | frontend + backend with `isolate` and `internal` options |
@@ -180,39 +180,39 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **PostgreSQL UBI image** | `compose.yaml:5` | `quay.io/sclorg/postgresql-16-c9s:20261104` (pinned, no `latest`) |
 | **No published DB port** | `compose.yaml:4-25` | Database not exposed to host |
 | **Fully qualified tags (no latest)** | `Makefile:4-5, compose.yaml:5, 33, 64` | All base images pinned to specific versions |
-| **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:73-78` | Build with `APP_VERSION` and `BUILD_DATE` |
-| **podman run manual** | `scripts/manual-setup.sh:48-61, 83-95, 105-110` | All run parameters explicitly shown |
-| **podman network create** | `scripts/manual-setup.sh:36-39` | Manual network setup with isolation |
+| **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:81-87` | Build with `APP_VERSION` and `BUILD_DATE` |
+| **podman run manual** | `scripts/manual-setup.sh:49-61, 91-107, 127-132` | All run parameters explicitly shown |
+| **podman network create** | `scripts/manual-setup.sh:35-38` | Manual network setup with isolation |
 | **podman secret create** | `scripts/setup-secret.sh:48` | Create secret from stdin |
 | **podman volume create** | `scripts/manual-setup.sh:43` | Named volume creation |
 | **podman save/load** | `scripts/save-image.sh:14` | Image distribution as tarball |
 | **podman generate/kube** | `scripts/generate-kube.sh:14-24` | Export to Kubernetes YAML (handles pods) |
 | **pg_dump backup** | `scripts/backup-db.sh:14` | Database logical backup |
-| **podman volume export** | `scripts/export-volume.sh:20` | Volume backup as tarball |
-| **podman inspect --format** | `Makefile:122-130` | Extract specific JSON fields |
-| **podman events** | `Makefile:132-133` | Monitor container events |
+| **podman volume export** | `scripts/export-volume.sh:22` | Volume backup as tarball |
+| **podman inspect --format** | `Makefile:125-133` | Extract specific JSON fields |
+| **podman events** | `Makefile:135-136` | Monitor container events |
 | **podman logs -f** | `Makefile:71` | Follow container logs (podman-compose logs -f) |
-| **podman port** | `Makefile:143` | Show port mappings |
-| **podman exec** | `scripts/backup-db.sh:14, Makefile:136-146` | Execute commands (`ss -pant`, psql) |
+| **podman port** | `Makefile:146` | Show port mappings |
+| **podman exec** | `scripts/backup-db.sh:14, Makefile:138-149` | Execute commands (`ss -pant`, psql) |
 | **restart policies** | `compose.yaml:19, 52, 72` | `unless-stopped` for automatic restart |
 | **compose healthcheck** | `compose.yaml:20-25, 53-59` | Runtime healthchecks (pg_isready, python http) |
-| **HEALTHCHECK in Containerfile** | `Containerfile:75-76` | Native container health check (OCI format note) |
+| **HEALTHCHECK in Containerfile** | `Containerfile:78-79` | Native container health check (OCI format note) |
 
 ### Additional Concepts Demonstrated
 
 | Concept | Location | Description |
 |---------|----------|-------------|
-| **registries.conf concepts** | `scripts/push-image.sh` | Fully qualified registry names (quay.io, docker.io) |
-| **UBI variants** | `Containerfile:3, 24` | `ubi9/python-311` (full) → `ubi-minimal` (runtime) |
+| **registries.conf concepts** | `scripts/push-image.sh:1-10` | Fully qualified registry names (quay.io, docker.io) |
+| **UBI variants** | `Containerfile:3, 35` | `ubi9/python-311` (full) → `ubi-minimal` (runtime) |
 | **Rootless subuid** | Implicit | All commands run rootless (no sudo) |
-| **Copy-on-write layers** | `Containerfile` | Optimized layer order for caching |
-| **DB env vars on empty volume** | [README § Database Initialization](#database-initialization) | Init script runs on every start (idempotent) |
+| **Copy-on-write layers** | `Containerfile:14-17` | Optimized layer order for caching |
+| **DB env vars on empty volume** | [README § Issue: Database not initializing](#issue-database-not-initializing) | Init script runs on every start (idempotent) |
 | **Default network DNS issue** | [README § Network Topology](#network-topology) | User-created networks required for DNS |
-| **App binding (0.0.0.0)** | `app/main.py:264, Containerfile:76` | Listen on all interfaces in container |
+| **App binding (0.0.0.0)** | `app/main.py:270-271` | Gunicorn binds 0.0.0.0:$PORT (ENV PORT in `Containerfile:44`) |
 | **compose up -d/down/down -v** | `Makefile:60, 64, 67` | Detached mode, cleanup, volume cleanup |
 | **podman ps** | `Makefile:74` | List containers (podman-compose ps) |
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
-| **Neutral sentiment class** | `app/sentiment.py` | VADER compound -0.05 to 0.05 = neutral |
+| **Neutral sentiment class** | `app/sentiment.py:46-49` | VADER compound -0.05 to 0.05 = neutral |
 
 **Note:** Line numbers are verified by `scripts/check-doc-refs.py` and `make docs-check`.
 
