@@ -3,6 +3,7 @@ import os
 import sqlite3
 import tempfile
 from typing import Generator
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -13,6 +14,80 @@ os.environ['DB_PORT'] = '5432'
 os.environ['DB_NAME'] = 'test_db'
 os.environ['DB_USER'] = 'test_user'
 os.environ['DB_PASSWORD'] = 'test_pass'
+
+
+class SQLiteAdapter:
+    """Adapter to make SQLite behave more like psycopg2 for testing"""
+    
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self._conn = None
+    
+    def connect(self):
+        self._conn = sqlite3.connect(self.db_path)
+        self._conn.row_factory = sqlite3.Row
+        return self
+    
+    def cursor(self, cursor_factory=None):
+        """Create cursor, ignoring cursor_factory for SQLite compatibility"""
+        return SQLiteCursorAdapter(self._conn.cursor())
+    
+    def commit(self):
+        return self._conn.commit()
+    
+    def close(self):
+        return self._conn.close()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._conn:
+            self._conn.close()
+
+
+class SQLiteCursorAdapter:
+    """Cursor adapter to convert psycopg2 %s placeholders to SQLite ? syntax"""
+    
+    def __init__(self, cursor):
+        self._cursor = cursor
+    
+    def execute(self, sql, params=None):
+        if params:
+            sql = sql.replace('%s', '?')
+        return self._cursor.execute(sql, params or ())
+    
+    def fetchone(self):
+        result = self._cursor.fetchone()
+        if result is None:
+            return None
+        if isinstance(result, sqlite3.Row):
+            class RowAdapter:
+                """Adapter that supports both dict and index access"""
+                def __init__(self, row):
+                    self._row = row
+                    self._dict = dict(row)
+                
+                def __getitem__(self, key):
+                    if isinstance(key, int):
+                        return self._row[key]
+                    return self._dict[key]
+                
+                def __iter__(self):
+                    return iter(self._dict.values())
+                
+                def keys(self):
+                    return self._dict.keys()
+            
+            return RowAdapter(result)
+        return result
+    
+    def fetchall(self):
+        results = self._cursor.fetchall()
+        return [dict(row) if isinstance(row, sqlite3.Row) else row for row in results]
+    
+    def close(self):
+        return self._cursor.close()
 
 
 @pytest.fixture
@@ -46,12 +121,9 @@ def temp_db():
 @pytest.fixture
 def mock_db_connection(mocker, temp_db):
     """Mock database connection to use SQLite for testing"""
-    import sqlite3
     
     def get_connection(*args, **kwargs):
-        conn = sqlite3.connect(temp_db)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return SQLiteAdapter(temp_db).connect()
     
     mocker.patch('app.main.get_db_connection', side_effect=get_connection)
     mocker.patch('psycopg2.connect', side_effect=get_connection)
