@@ -11,7 +11,7 @@ services:
         type: env
     volumes:
       - db-data:/var/lib/pgsql/data:Z
-      - ./db/init.sql:/opt/app-root/src/postgresql-init/init.sql:Z,ro
+      - ./db/00-init.sh:/opt/app-root/src/postgresql-start/00-init.sh:Z,ro
     networks:
       - backend
     restart: unless-stopped

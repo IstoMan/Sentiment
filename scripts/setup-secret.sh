@@ -39,7 +39,7 @@ else
     echo "Generated secure password: $PASSWORD"
 fi
 
-echo "$PASSWORD" | podman secret create "$SECRET_NAME" -
+printf "%s" "$PASSWORD" | podman secret create "$SECRET_NAME" -
 
 echo "✓ Secret '$SECRET_NAME' created successfully"
 echo ""
