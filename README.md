@@ -362,7 +362,7 @@ make up
 **Solution**:
 ```bash
 # Fix permissions for bind mounts
-chmod 644 db/init.sql
+chmod 644 db/00-init.sh
 chmod 644 proxy/nginx.conf
 
 # Database volumes should use named volumes (already configured)

@@ -61,9 +61,17 @@ podman run -d \
     quay.io/sclorg/postgresql-16-c9s:20261104
 
 echo "Waiting for database to be healthy..."
-until [ "$(podman inspect --format='{{.State.Health.Status}}' ${PROJECT_NAME}-db)" = "healthy" ]; do
+COUNTER=0
+until [ "$(podman inspect --format='{{.State.Health.Status}}' ${PROJECT_NAME}-db 2>/dev/null)" = "healthy" ]; do
     echo -n "."
     sleep 2
+    COUNTER=$((COUNTER + 1))
+    if [ $COUNTER -ge 60 ]; then
+        echo ""
+        echo "✗ Database failed to become healthy after 120s"
+        podman logs --tail 50 "${PROJECT_NAME}-db"
+        exit 1
+    fi
 done
 echo ""
 echo "✓ Database is healthy"

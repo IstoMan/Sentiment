@@ -4,6 +4,6 @@ services:
   api:
     volumes:
       - ./app:/app/app:Z
-    command: ["--reload", "--bind", "0.0.0.0:8080", "--workers", "1", "app:app"]
+    command: ["--reload", "--workers", "1", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
     environment:
       FLASK_DEBUG: "1"

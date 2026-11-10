@@ -16,6 +16,8 @@ if ! podman volume exists "$VOLUME_NAME" 2>/dev/null; then
 fi
 
 echo "Exporting volume $VOLUME_NAME..."
+echo "Note: Stop the database container first to ensure data consistency,"
+echo "      or use 'make backup' for online pg_dump backup."
 
 podman volume export "$VOLUME_NAME" -o "$EXPORT_FILE"
 
