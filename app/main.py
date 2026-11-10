@@ -76,8 +76,11 @@ if __name__ != '__main__' and os.environ.get('WAIT_FOR_DB', '0') == '1':
 
 
 def get_db_connection():
-    """Create database connection"""
-    return psycopg2.connect(**DB_CONFIG)
+    """Create database connection with timeout"""
+    # Add connection timeout to avoid hanging on network issues
+    db_config_with_timeout = DB_CONFIG.copy()
+    db_config_with_timeout['connect_timeout'] = 5
+    return psycopg2.connect(**db_config_with_timeout)
 
 
 @app.route('/')

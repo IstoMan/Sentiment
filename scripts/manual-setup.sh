@@ -2,6 +2,25 @@
 # Manual Podman setup script - demonstrates all concepts without compose
 set -euo pipefail
 
+# Cleanup function to remove containers on failure
+cleanup_on_error() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo ""
+        echo "⚠ Setup failed. Cleaning up containers..."
+        podman stop sentiment-db 2>/dev/null || true
+        podman stop sentiment-api 2>/dev/null || true
+        podman stop sentiment-proxy 2>/dev/null || true
+        podman rm sentiment-db 2>/dev/null || true
+        podman rm sentiment-api 2>/dev/null || true
+        podman rm sentiment-proxy 2>/dev/null || true
+        echo "✓ Containers removed"
+    fi
+}
+
+# Set trap to cleanup on error
+trap cleanup_on_error EXIT
+
 PROJECT_NAME="sentiment"
 VERSION="${VERSION:-1.0.0}"
 IMAGE_NAME="localhost/${PROJECT_NAME}-analyzer:${VERSION}"
@@ -139,6 +158,10 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Application is now running at: http://127.0.0.1:8000"
+
+# Clear trap on successful completion
+trap - EXIT
+
 echo ""
 echo "Useful commands:"
 echo "  podman ps                                    # List running containers"
