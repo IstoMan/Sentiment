@@ -11,7 +11,7 @@ This verification covers all functionality that can be tested on Podman 4.9.3. I
 
 ### ✅ Verified Working
 - Unit tests (31 passed, 2 skipped)
-- Documentation reference validation (38 rows, all pass)
+- Documentation reference validation (47 rows at final commit d7728d2)
 - Image builds successfully with correct exec-form ENTRYPOINT
 - POST requests through proxy (tested manually)
 - Real gunicorn with PID 1, graceful shutdown
@@ -275,9 +275,9 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 - Honest about environment limitations
 
 ### P1-3: README Mapping Table ✅
-- Fixed all 19 incorrect line numbers
-- Corrected section anchors (removed invalid `{#...}` syntax)
-- All 38 rows validated by automated parser
+- Commit 92dc74d: Basic range checker implemented, many line numbers were incorrect
+- Commit d7728d2: All 47 rows regenerated with correct line numbers
+- Final robust checker validates content tokens and anchors
 
 ### P2-4: Test Stage Fixes ✅
 - Added `COPY app/ ./app/` to test stage
@@ -323,7 +323,7 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 All fixable issues from QA Round 3 have been addressed:
 - ✅ Real exec-form ENTRYPOINT (no shell wrapper)
 - ✅ Unit tests pass (31/31)
-- ✅ Documentation validation automated and passing (38/38)
+- ✅ Documentation validation automated (47/47 at final commit d7728d2)
 - ✅ POST requests work through proxy
 - ✅ Honest verification documentation
 - ✅ Code quality improvements (removed unused dependencies, fixed warnings)
