@@ -1,0 +1,83 @@
+services:
+  db:
+    image: quay.io/sclorg/postgresql-16-c9s:latest
+    container_name: sentiment-db
+    environment:
+      POSTGRESQL_USER: ${DB_USER:-sentiment_user}
+      POSTGRESQL_DATABASE: ${DB_NAME:-sentiment_db}
+    secrets:
+      - source: db_password
+        target: /run/secrets/db_password
+    env_file:
+      - .env
+    volumes:
+      - db-data:/var/lib/pgsql/data:Z
+      - ./db/init.sql:/opt/app-root/src/postgresql-init/init.sql:Z,ro
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sentiment_user} -d ${DB_NAME:-sentiment_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: localhost/sentiment-analyzer:1.0.0
+    container_name: sentiment-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-sentiment_db}
+      DB_USER: ${DB_USER:-sentiment_user}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      PORT: 8080
+    secrets:
+      - source: db_password
+        target: /run/secrets/db_password
+    env_file:
+      - .env
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3.11 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health').read()\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  proxy:
+    image: registry.access.redhat.com/ubi9/nginx-122:latest
+    container_name: sentiment-proxy
+    ports:
+      - "127.0.0.1:8000:8080"
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:Z,ro
+    networks:
+      - frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  db-data:
+    driver: local
+
+secrets:
+  db_password:
+    external: true
