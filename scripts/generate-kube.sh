@@ -9,14 +9,18 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "Generating Kubernetes manifests..."
 
-echo "Generating DB manifest..."
-podman generate kube "${PROJECT_NAME}-db" > "${OUTPUT_DIR}/db-deployment.yaml"
+# With podman-compose 1.6+, containers are in a pod
+# Check if pod exists and generate from that
+if podman pod exists pod_sentiment 2>/dev/null; then
+    echo "Generating from pod pod_sentiment (podman-compose 1.6+ mode)..."
+    podman kube generate pod_sentiment > "${OUTPUT_DIR}/sentiment-pod.yaml"
+    echo "✓ Generated ${OUTPUT_DIR}/sentiment-pod.yaml"
+else
+    echo "Generating per-container manifests..."
+    podman generate kube "${PROJECT_NAME}-db" > "${OUTPUT_DIR}/db-deployment.yaml"
+    podman generate kube "${PROJECT_NAME}-api" > "${OUTPUT_DIR}/api-deployment.yaml"
+    podman generate kube "${PROJECT_NAME}-proxy" > "${OUTPUT_DIR}/proxy-deployment.yaml"
+    echo "✓ Generated individual manifests in ${OUTPUT_DIR}/"
+fi
 
-echo "Generating API manifest..."
-podman generate kube "${PROJECT_NAME}-api" > "${OUTPUT_DIR}/api-deployment.yaml"
-
-echo "Generating proxy manifest..."
-podman generate kube "${PROJECT_NAME}-proxy" > "${OUTPUT_DIR}/proxy-deployment.yaml"
-
-echo "✓ Kubernetes manifests generated in $OUTPUT_DIR/"
 ls -lh "$OUTPUT_DIR"

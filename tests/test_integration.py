@@ -9,6 +9,15 @@ import psycopg2
 import pytest
 
 
+def get_db_password():
+    """Get database password from file or environment"""
+    password_file = os.environ.get('DB_PASSWORD_FILE', '/run/secrets/db_password')
+    if os.path.exists(password_file):
+        with open(password_file, 'r') as f:
+            return f.read().strip()
+    return os.environ.get('DB_PASSWORD', 'changeme')
+
+
 @pytest.mark.integration
 @pytest.mark.skipif(
     os.environ.get('SKIP_INTEGRATION_TESTS', 'true').lower() == 'true',
@@ -20,11 +29,11 @@ class TestDatabaseIntegration:
     def test_database_connection(self):
         """Test connection to real database"""
         conn = psycopg2.connect(
-            host=os.environ.get('DB_HOST', 'localhost'),
+            host=os.environ.get('DB_HOST', 'db'),
             port=int(os.environ.get('DB_PORT', '5432')),
             database=os.environ.get('DB_NAME', 'sentiment_db'),
             user=os.environ.get('DB_USER', 'sentiment_user'),
-            password=os.environ.get('DB_PASSWORD', 'changeme')
+            password=get_db_password()
         )
         
         cursor = conn.cursor()
@@ -39,11 +48,11 @@ class TestDatabaseIntegration:
     def test_reviews_table_exists(self):
         """Test that reviews table exists and has correct schema"""
         conn = psycopg2.connect(
-            host=os.environ.get('DB_HOST', 'localhost'),
+            host=os.environ.get('DB_HOST', 'db'),
             port=int(os.environ.get('DB_PORT', '5432')),
             database=os.environ.get('DB_NAME', 'sentiment_db'),
             user=os.environ.get('DB_USER', 'sentiment_user'),
-            password=os.environ.get('DB_PASSWORD', 'changeme')
+            password=get_db_password()
         )
         
         cursor = conn.cursor()

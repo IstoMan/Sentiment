@@ -174,3 +174,134 @@ class TestIndexPage:
         response = app_client.get('/')
         assert response.status_code == 200
         assert b'Sentiment Analyzer' in response.data
+
+
+class TestInputValidation:
+    """Test input validation"""
+    
+    def test_empty_text(self, app_client):
+        """Test with empty text"""
+        response = app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': ''}),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+        assert 'empty' in data['error'].lower()
+    
+    def test_non_string_text(self, app_client):
+        """Test with non-string text"""
+        response = app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': 123}),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+        assert 'string' in data['error'].lower()
+    
+    def test_oversized_text(self, app_client):
+        """Test text exceeding maximum length"""
+        long_text = 'a' * 5001
+        response = app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': long_text}),
+            content_type='application/json'
+        )
+        assert response.status_code == 413
+        data = json.loads(response.data)
+        assert 'error' in data
+    
+    def test_malformed_json(self, app_client):
+        """Test with malformed JSON"""
+        response = app_client.post(
+            '/api/analyze',
+            data='not valid json',
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+    
+    def test_missing_text_field(self, app_client):
+        """Test with missing text field"""
+        response = app_client.post(
+            '/api/analyze',
+            data=json.dumps({'wrong_field': 'value'}),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+
+
+class TestPagination:
+    """Test pagination parameters"""
+    
+    def test_negative_limit(self, app_client):
+        """Test with negative limit"""
+        response = app_client.get('/api/reviews?limit=-1')
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['limit'] == 1  # Should clamp to minimum
+    
+    def test_excessive_limit(self, app_client):
+        """Test with excessive limit"""
+        response = app_client.get('/api/reviews?limit=200')
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['limit'] == 100  # Should clamp to maximum
+    
+    def test_negative_offset(self, app_client):
+        """Test with negative offset"""
+        response = app_client.get('/api/reviews?offset=-10')
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['offset'] == 0  # Should clamp to minimum
+
+
+class TestStatsAccuracy:
+    """Test stats calculation accuracy"""
+    
+    def test_exact_percentages(self, app_client):
+        """Test exact percentage calculations"""
+        # Add 2 positive reviews
+        app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': 'This is amazing!'}),
+            content_type='application/json'
+        )
+        app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': 'I love it!'}),
+            content_type='application/json'
+        )
+        
+        # Add 1 negative review
+        app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': 'This is terrible and awful'}),
+            content_type='application/json'
+        )
+        
+        # Add 1 neutral review
+        app_client.post(
+            '/api/analyze',
+            data=json.dumps({'text': 'It is a thing'}),
+            content_type='application/json'
+        )
+        
+        response = app_client.get('/api/stats')
+        assert response.status_code == 200
+        
+        data = json.loads(response.data)
+        assert data['total_reviews'] == 4
+        assert data['positive_count'] == 2
+        assert data['negative_count'] == 1
+        assert data['neutral_count'] == 1
+        assert data['positive_percentage'] == 50.0
+        assert data['negative_percentage'] == 25.0
+        assert data['neutral_percentage'] == 25.0

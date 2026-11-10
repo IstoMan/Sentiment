@@ -1,0 +1,9 @@
+# Development override for live-reload
+# Usage: podman-compose -f compose.yaml -f compose.dev.yaml up -d
+services:
+  api:
+    volumes:
+      - ./app:/app/app:Z
+    command: ["gunicorn", "--reload", "--bind", "0.0.0.0:8080", "--workers", "1", "app:app"]
+    environment:
+      FLASK_DEBUG: "1"

@@ -87,6 +87,21 @@ test:
 test-cov:
 	python3 -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
+test-integration:
+	@echo "Running integration tests inside backend network..."
+	podman run --rm \
+	  --network sentiment_backend \
+	  --secret db_password \
+	  -e DB_HOST=db \
+	  -e DB_NAME=sentiment_db \
+	  -e DB_USER=sentiment_user \
+	  -e DB_PASSWORD_FILE=/run/secrets/db_password \
+	  -e SKIP_INTEGRATION_TESTS=false \
+	  -v ./:/src:Z \
+	  -w /src \
+	  registry.access.redhat.com/ubi9/python-311:9.8-1779945715 \
+	  bash -c 'pip install -q -r requirements.txt -r requirements-test.txt && pytest -m integration -v'
+
 backup:
 	@chmod +x scripts/backup-db.sh
 	@./scripts/backup-db.sh
