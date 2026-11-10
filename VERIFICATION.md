@@ -1,10 +1,10 @@
 # Verification Report
 
 **Initial Commit:** 92dc74d4c9f288be1fefd4146771a7fe17cfd5e8  
-**Final Commit:** 4134c9f196ad5be23a52b7ded7ef68cba83521b2 (QA Round 6 fixes)  
-**Date:** 2026-11-10 12:52 UTC (initial) - 2026-11-10 14:05 UTC (final)  
+**Final Commit:** da21328f5cb6bf6afa1d589043d603fbb95e220d (QA Round 7 tidy-up)  
+**Date:** 2026-11-10 12:52 UTC (initial) - 2026-11-10 14:27 UTC (final)  
 **Environment:** Podman 4.9.3, Ubuntu 22.04 (Cloud Agent VM)  
-**Tester:** Automated verification on local Podman 4.9.3 + QA rounds on 5.8.8
+**Tester:** Automated verification on local Podman 4.9.3 + QA rounds 4-7 on 5.8.8
 
 ## Summary
 
