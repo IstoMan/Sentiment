@@ -99,13 +99,19 @@ podman run -d \
 
 echo "Waiting for application to be ready..."
 for i in {1..30}; do
-    if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
+    if [ "$(podman inspect -f '{{.State.Health.Status}}' "${PROJECT_NAME}-api" 2>/dev/null)" = "healthy" ]; then
         echo "✓ Application is healthy"
         break
     fi
     echo -n "."
     sleep 2
 done
+if [ "$(podman inspect -f '{{.State.Health.Status}}' "${PROJECT_NAME}-api" 2>/dev/null)" != "healthy" ]; then
+    echo ""
+    echo "✗ API not healthy after 60s"
+    podman logs --tail 50 "${PROJECT_NAME}-api"
+    exit 1
+fi
 echo ""
 
 echo ""

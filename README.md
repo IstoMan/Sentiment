@@ -38,7 +38,7 @@ graph TB
     style DataVol fill:#f1f8e9
 ```
 
-### Network Topology {#network-topology}
+### Network Topology
 
 The application uses **two separate networks** to implement defense-in-depth:
 
@@ -159,15 +159,15 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 
 | Concept | Location | Description |
 |---------|----------|-------------|
-| **Multi-stage Containerfile** | `Containerfile:1-21, 23-71` | Builder stage (Python 3.11) + runtime stage (UBI minimal) |
-| **UBI Base Images** | `Containerfile:3, 24` | Uses `ubi9/python-311:9.8-*` for builder and `ubi-minimal:9.8-*` for runtime |
-| **Non-root USER** | `Containerfile:53-57, 63` | useradd uid=1001, runs as UID 1001 (appuser) |
-| **ARG + ENV with defaults** | `Containerfile:5-7, 26-35` | `${APP_VERSION:-1.0.0}`, `${PORT:-8080}` |
-| **EXPOSE** | `Containerfile:65` | Port 8080 (>1024 for rootless) |
-| **LABEL** | `Containerfile:37-45` | Metadata: name, version, description, maintainer, build-date |
-| **Exec-form ENTRYPOINT/CMD** | `Containerfile:70-71` | JSON array format: `["gunicorn"]`, `["--bind", ...]` |
-| **Layer caching optimization** | `Containerfile:15-18, 61` | Copy requirements.txt before app code |
-| **COPY --from=builder** | `Containerfile:51` | Copy venv from builder stage |
+| **Multi-stage Containerfile** | `Containerfile:3-22, 24-30, 32-79` | Builder stage (Python 3.11) + test stage + runtime stage (UBI minimal) |
+| **UBI Base Images** | `Containerfile:3, 32` | Uses `ubi9/python-311:9.8-*` for builder and `ubi-minimal:9.8-*` for runtime |
+| **Non-root USER** | `Containerfile:61-65, 71` | useradd uid=1001, runs as UID 1001 (appuser) |
+| **ARG + ENV with defaults** | `Containerfile:5-6, 34-43` | `${APP_VERSION}`, `${PORT:-8080}` |
+| **EXPOSE** | `Containerfile:73` | Port 8080 (>1024 for rootless) |
+| **LABEL** | `Containerfile:45-53` | Metadata: name, version, description, maintainer, build-date |
+| **Exec-form ENTRYPOINT/CMD** | `Containerfile:78-79` | JSON array format: `["gunicorn"]`, `["--workers", "2", ...]` |
+| **Layer caching optimization** | `Containerfile:15-18, 69` | Copy requirements.txt before app code |
+| **COPY --from=builder** | `Containerfile:59` | Copy venv from builder stage |
 | **Podman secret (file)** | `compose.yaml:10-13, 43-45, 89-91` | DB password via `/run/secrets/db_password` (file) and type=env |
 | **Secret consumption in code** | `app/main.py:25-37` | Reads from `DB_PASSWORD_FILE` with fallback |
 | **Named volume** | `compose.yaml:14-16, 85-87` | `db-data` for PostgreSQL persistence |
@@ -189,14 +189,14 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **podman generate/kube** | `scripts/generate-kube.sh:14-24` | Export to Kubernetes YAML (handles pods) |
 | **pg_dump backup** | `scripts/backup-db.sh:14` | Database logical backup |
 | **podman volume export** | `scripts/export-volume.sh:20` | Volume backup as tarball |
-| **podman inspect --format** | `Makefile:121-129` | Extract specific JSON fields |
-| **podman events** | `Makefile:131-132` | Monitor container events |
+| **podman inspect --format** | `Makefile:122-130` | Extract specific JSON fields |
+| **podman events** | `Makefile:132-133` | Monitor container events |
 | **podman logs -f** | `Makefile:71` | Follow container logs (podman-compose logs -f) |
-| **podman port** | `Makefile:142` | Show port mappings |
-| **podman exec** | `scripts/backup-db.sh:14, Makefile:134-145` | Execute commands (`ss -pant`, psql) |
+| **podman port** | `Makefile:143` | Show port mappings |
+| **podman exec** | `scripts/backup-db.sh:14, Makefile:136-146` | Execute commands (`ss -pant`, psql) |
 | **restart policies** | `compose.yaml:19, 52, 72` | `unless-stopped` for automatic restart |
 | **compose healthcheck** | `compose.yaml:20-25, 53-59` | Runtime healthchecks (pg_isready, python http) |
-| **HEALTHCHECK in Containerfile** | `Containerfile:67-68` | Native container health check (OCI format note) |
+| **HEALTHCHECK in Containerfile** | `Containerfile:75-76` | Native container health check (OCI format note) |
 
 ### Additional Concepts Demonstrated
 
@@ -214,7 +214,7 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
 | **Neutral sentiment class** | `app/sentiment.py` | VADER compound -0.05 to 0.05 = neutral |
 
-**Note on line numbers:** These references are verified against the codebase. See `scripts/check-doc-refs.py` for automated verification.
+**Note:** Line numbers are verified by `scripts/check-doc-refs.py` and `make docs-check`.
 
 ## Verification & Troubleshooting
 

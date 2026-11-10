@@ -3,7 +3,6 @@
 FROM registry.access.redhat.com/ubi9/python-311:9.8-1779945715 AS builder
 
 ARG APP_VERSION=1.0.0
-ARG BUILD_DATE
 ENV APP_VERSION=${APP_VERSION}
 
 USER 0
@@ -26,7 +25,11 @@ FROM builder AS test
 COPY requirements-test.txt .
 RUN pip install --no-cache-dir -r requirements-test.txt
 
+COPY app/ ./app/
 COPY tests/ ./tests/
+
+# Clear ENTRYPOINT so pytest can be run directly
+ENTRYPOINT []
 
 # Stage 2: Runtime - minimal image with application
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1794186349 AS runtime
@@ -75,5 +78,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python3.11 -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health').read()" || exit 1
 
-ENTRYPOINT ["sh", "-c"]
-CMD ["exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 60 --access-logfile - --error-logfile - app:app"]
+ENTRYPOINT ["gunicorn"]
+CMD ["--workers", "2", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

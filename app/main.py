@@ -6,15 +6,12 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from flask import Flask, jsonify, render_template, request
-from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from .sentiment import SentimentAnalyzer, preprocess_text
 
 app = Flask(__name__)
-# Restrict CORS to same-origin (UI served through proxy on same domain)
-# CORS(app, origins=["http://127.0.0.1:8000"])
 
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),

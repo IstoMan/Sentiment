@@ -84,6 +84,9 @@ manual-stop:
 test:
 	python3 -m pytest tests/ -v
 
+docs-check:
+	python3 scripts/check-doc-refs.py
+
 test-cov:
 	python3 -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
@@ -101,7 +104,7 @@ test-integration:
 	  -e SKIP_INTEGRATION_TESTS=false \
 	  -e TESTING=0 \
 	  localhost/sentiment-analyzer-test:$(VERSION) \
-	  python -m pytest -m integration -v
+	  /opt/app-venv/bin/python -m pytest tests/test_integration.py -m integration -v
 
 backup:
 	@chmod +x scripts/backup-db.sh

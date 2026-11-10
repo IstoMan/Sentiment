@@ -2,12 +2,16 @@
 import os
 import sqlite3
 import tempfile
+from datetime import datetime
 from typing import Generator
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+
+# Register datetime adapter to silence Python 3.12+ deprecation warnings
+sqlite3.register_adapter(datetime, lambda d: d.isoformat())
 
 # Set test environment variables before importing app
 # Use setdefault so integration tests can override these
