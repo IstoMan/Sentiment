@@ -80,6 +80,7 @@ echo "✓ Volume created: $VOLUME_DATA"
 
 echo ""
 echo "Step 3: Starting PostgreSQL database..."
+CREATED_CONTAINERS+=("${PROJECT_NAME}-db")
 podman run -d \
     --name "${PROJECT_NAME}-db" \
     --network "$NETWORK_BACKEND" \
@@ -94,7 +95,6 @@ podman run -d \
     --health-timeout 5s \
     --health-retries 5 \
     quay.io/sclorg/postgresql-16-c9s:20261104
-CREATED_CONTAINERS+=("${PROJECT_NAME}-db")
 
 echo "Waiting for database to be healthy..."
 COUNTER=0
@@ -124,6 +124,7 @@ echo "✓ Image built: $IMAGE_NAME"
 
 echo ""
 echo "Step 5: Starting application..."
+CREATED_CONTAINERS+=("${PROJECT_NAME}-api")
 podman run -d \
     --name "${PROJECT_NAME}-api" \
     --network "$NETWORK_FRONTEND":alias=api \
@@ -140,7 +141,6 @@ podman run -d \
     --health-cmd 'curl -fsS http://localhost:8080/health || exit 1' \
     --health-interval 10s \
     "$IMAGE_NAME"
-CREATED_CONTAINERS+=("${PROJECT_NAME}-api")
 
 echo "Waiting for application to be ready..."
 for i in {1..30}; do
@@ -163,13 +163,13 @@ echo ""
 echo "Step 6: Building and starting proxy..."
 podman build -t "localhost/${PROJECT_NAME}-proxy:${VERSION}" proxy/
 
+CREATED_CONTAINERS+=("${PROJECT_NAME}-proxy")
 podman run -d \
     --name "${PROJECT_NAME}-proxy" \
     --network "$NETWORK_FRONTEND" \
     -p "127.0.0.1:8000:8080" \
     --restart unless-stopped \
     "localhost/${PROJECT_NAME}-proxy:${VERSION}"
-CREATED_CONTAINERS+=("${PROJECT_NAME}-proxy")
 
 echo "✓ Proxy started"
 

@@ -12,7 +12,7 @@ This verification covers all functionality that can be tested on Podman 4.9.3. I
 
 ### ✅ Verified Working
 - Unit tests (31 passed, 2 skipped)
-- Documentation reference validation (48 passed including multi-file rows)
+- Documentation reference validation (48 rows passed validation)
 - Image builds successfully with correct exec-form ENTRYPOINT
 - POST requests through proxy (tested manually)
 - Real gunicorn with PID 1, graceful shutdown
@@ -143,7 +143,7 @@ All references validated ✓
 ```
 
 **Result (from commit 92dc74d):** ✅ 38 mapping table rows validated  
-**Current (after QA rounds 4-6):** 48 passed (includes multi-file rows, see `make test` output below)
+**Current (after QA rounds 4-6):** 48 passed (verified by `make test`)
 
 ## 4. Runtime Verification (Manual)
 
@@ -279,7 +279,8 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 ### P1-3: README Mapping Table ✅
 - Commit 92dc74d: Basic range checker implemented, many line numbers were incorrect
 - Commit d7728d2: 47 rows regenerated (2 rows needed further adjustment in 018c467)
-- Commit 9e7d3ed: Trap fixes and remaining row corrections
+- Commit 9e7d3ed: Trap fixes (code changes only)
+- Commit 4134c9f: Remaining row corrections and documentation updates
 - Final robust checker validates content tokens and anchors
 
 ### P2-4: Test Stage Fixes ✅
@@ -326,7 +327,7 @@ $ podman exec sentiment-api cat /proc/1/cmdline | tr '\0' ' '
 All fixable issues from QA Round 3 have been addressed:
 - ✅ Real exec-form ENTRYPOINT (no shell wrapper)
 - ✅ Unit tests pass (31 passed, 2 skipped)
-- ✅ Documentation validation automated (48 passed including multi-file rows)
+- ✅ Documentation validation automated (48 rows passed validation)
 - ✅ POST requests work through proxy
 - ✅ Honest verification documentation
 - ✅ Code quality improvements (removed unused dependencies, fixed warnings)

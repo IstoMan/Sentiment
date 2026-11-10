@@ -101,7 +101,8 @@ def health():
         db_status = 'healthy'
         status_code = 200
     except Exception as e:
-        db_status = f'unhealthy: {str(e)}'
+        app.logger.exception("Database health check failed")
+        db_status = 'unhealthy: database connection error'
         status_code = 503
     
     return jsonify({

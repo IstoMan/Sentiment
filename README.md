@@ -83,6 +83,8 @@ make up
 
 ### Option 2: Manual Podman Commands
 
+**Note:** Compose mode and manual mode cannot run simultaneously. They use the same container names (`sentiment-db`, `sentiment-api`, `sentiment-proxy`), networks, volume (`sentiment_db-data`), and host port (127.0.0.1:8000). Stop one before starting the other with `make down` or `./scripts/manual-stop.sh`.
+
 ```bash
 # 1. Setup environment and secret
 cp .env.example .env
@@ -208,11 +210,11 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 | **Copy-on-write layers** | `Containerfile:14-18, 69-72` | Optimized layer order for caching (requirements before code) |
 | **DB env vars on empty volume** | [README § Issue: Database not initializing](#issue-database-not-initializing) | Init script runs on every start (idempotent) |
 | **Default network DNS issue** | [README § Issue: podman-compose can't find services](#issue-podman-compose-cant-find-services) | User-created networks required for DNS (see lines 334-340) |
-| **App binding (0.0.0.0)** | `app/main.py:273-274` and `Containerfile:41-44` | Gunicorn binds 0.0.0.0:$PORT; ENV PORT set in Containerfile |
+| **App binding (0.0.0.0)** | `app/main.py:273-275` and `Containerfile:41-44` | Gunicorn binds 0.0.0.0:$PORT; ENV PORT set in Containerfile |
 | **compose up -d/down/down -v** | `Makefile:60, 64, 67` | Detached mode, cleanup, volume cleanup |
 | **podman ps** | `Makefile:74` | List containers (podman-compose ps) |
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
-| **Neutral sentiment class** | `app/sentiment.py:46-49` | VADER compound -0.05 to 0.05 = neutral |
+| **Neutral sentiment class** | `app/sentiment.py:42-47` | VADER compound -0.05 to 0.05 = neutral |
 
 **Note:** Line numbers are verified by `scripts/check-doc-refs.py` and `make docs-check`.
 
