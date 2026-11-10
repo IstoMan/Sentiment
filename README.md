@@ -21,16 +21,16 @@ This application provides a web interface and REST API for analyzing the sentime
 ```mermaid
 graph TB
     User[User Browser/API Client]
-    Proxy[Nginx Proxy<br/>ubi9/nginx-122<br/>Port 127.0.0.1:8000]
+    Proxy[Nginx Proxy<br/>localhost/sentiment-proxy:1.0.0<br/>Port 127.0.0.1:8000]
     API[Flask API<br/>sentiment-api<br/>Port 8080]
-    DB[(PostgreSQL<br/>postgresql-16-c9s<br/>No exposed port)]
+    DB[(PostgreSQL<br/>postgresql-16-c9s:20261104<br/>No exposed port)]
     
     User -->|HTTP| Proxy
     Proxy -->|frontend network| API
     API -->|backend network| DB
     
     DB -.->|named volume<br/>:Z mount| DataVol[db-data volume]
-    DB -.->|:Z mount| InitSQL[init.sql]
+    DB -.->|:Z mount| InitScript[00-init.sh]
     
     style Proxy fill:#e1f5ff
     style API fill:#fff4e6
@@ -51,9 +51,11 @@ The proxy (and thus external users) cannot reach the database directly - all dat
 
 ### Prerequisites
 
-- Podman 4.9+ (rootless mode recommended)
+- **Podman 5.x** (rootless mode recommended; 4.9+ works with caveats)
 - podman-compose 1.6+
 - Python 3.11+ (for local testing)
+
+**Note:** This project targets Podman 5.x with proper network isolation. Podman 4.9 works but lacks some isolation features tested on Podman 5.
 
 ### Option 1: Using podman-compose (Recommended)
 
@@ -152,60 +154,62 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 
 | Concept | Location | Description |
 |---------|----------|-------------|
-| **Multi-stage Containerfile** | `Containerfile:1-18, 20-63` | Builder stage (Python 3.11) + runtime stage (UBI minimal) |
-| **UBI Base Images** | `Containerfile:4, 20` | Uses `ubi9/python-311` for builder and `ubi-minimal` for runtime |
-| **Non-root USER** | `Containerfile:53-57, 62` | Application runs as UID 1001 (appuser) |
-| **ARG + ENV with defaults** | `Containerfile:6-7, 22-29` | `${APP_VERSION:-1.0.0}`, `${PORT:-8080}` |
-| **EXPOSE** | `Containerfile:64` | Port 8080 (>1024 for rootless) |
-| **LABEL** | `Containerfile:31-39` | Metadata: name, version, description, maintainer, build-date |
-| **Exec-form ENTRYPOINT/CMD** | `Containerfile:69-70` | JSON array format: `["gunicorn"]`, `["--bind", ...]` |
-| **Layer caching optimization** | `Containerfile:13-16` | Copy requirements.txt before app code |
-| **COPY --from=builder** | `Containerfile:47` | Copy venv from builder stage |
-| **Podman secret (file)** | `compose.yaml:11-13, 33-35` | DB password via `/run/secrets/db_password` |
-| **Secret consumption in code** | `app/main.py:23-28` | Reads from `DB_PASSWORD_FILE` |
-| **Named volume** | `compose.yaml:17, 76-77` | `db-data` for PostgreSQL persistence |
-| **Bind mount with :Z** | `compose.yaml:18, 52` | SELinux label for init.sql and nginx.conf |
-| **Two networks (isolation)** | `compose.yaml:49-51, 67, 72-75` | frontend + backend: proxy cannot reach DB |
-| **User-created network** | `scripts/manual-setup.sh:29-31` | Networks with DNS for name resolution |
-| **depends_on** | `compose.yaml:54-55, 68-69` | Service startup ordering with health checks |
-| **container_name** | `compose.yaml:8, 28, 60` | Named containers for easy reference |
-| **env_file** | `compose.yaml:14, 36, 63` | Load variables from `.env` file |
-| **ports (127.0.0.1)** | `compose.yaml:61` | Rootless-friendly binding to loopback |
-| **PostgreSQL UBI image** | `compose.yaml:5` | `quay.io/sclorg/postgresql-16-c9s` |
-| **No published DB port** | `compose.yaml:5-20` | Database not exposed to host |
-| **Fully qualified tags** | `Makefile:4, compose.yaml:30` | `localhost/sentiment-analyzer:1.0.0` (no `latest`) |
-| **podman build** | `Makefile:27-32, scripts/manual-setup.sh:44-50` | Build with args |
-| **podman run manual** | `scripts/manual-setup.sh:35-48, 52-64, 68-76` | All run parameters explicitly shown |
-| **podman network create** | `scripts/manual-setup.sh:29-31` | Manual network setup |
-| **podman secret create** | `scripts/setup-secret.sh:31` | Create secret from stdin |
-| **podman volume create** | `scripts/manual-setup.sh:34-36` | Named volume creation |
+| **Multi-stage Containerfile** | `Containerfile:1-21, 23-71` | Builder stage (Python 3.11) + runtime stage (UBI minimal) |
+| **UBI Base Images** | `Containerfile:3, 24` | Uses `ubi9/python-311:9.8-*` for builder and `ubi-minimal:9.8-*` for runtime |
+| **Non-root USER** | `Containerfile:53-57, 63` | useradd uid=1001, runs as UID 1001 (appuser) |
+| **ARG + ENV with defaults** | `Containerfile:5-7, 26-35` | `${APP_VERSION:-1.0.0}`, `${PORT:-8080}` |
+| **EXPOSE** | `Containerfile:65` | Port 8080 (>1024 for rootless) |
+| **LABEL** | `Containerfile:37-45` | Metadata: name, version, description, maintainer, build-date |
+| **Exec-form ENTRYPOINT/CMD** | `Containerfile:70-71` | JSON array format: `["gunicorn"]`, `["--bind", ...]` |
+| **Layer caching optimization** | `Containerfile:15-18, 61` | Copy requirements.txt before app code |
+| **COPY --from=builder** | `Containerfile:51` | Copy venv from builder stage |
+| **Podman secret (file)** | `compose.yaml:10-13, 43-45, 89-91` | DB password via `/run/secrets/db_password` (file) and type=env |
+| **Secret consumption in code** | `app/main.py:25-30` | Reads from `DB_PASSWORD_FILE` with fallback |
+| **Named volume** | `compose.yaml:14-16, 85-87` | `db-data` for PostgreSQL persistence |
+| **Bind mount with :Z** | `compose.yaml:17` | SELinux label for `db/00-init.sh` |
+| **Two networks (real isolation)** | `compose.yaml:17-19, 46-48, 68-69, 74-83` | frontend + backend with `isolate` and `internal` options |
+| **User-created network with opts** | `scripts/manual-setup.sh:36-39` | Networks with `--opt isolate=true` and `--internal` |
+| **depends_on with condition** | `compose.yaml:49-51, 70-71` | Service startup ordering: `service_healthy` |
+| **container_name** | `compose.yaml:6, 34, 65` | Named containers for easy reference |
+| **ports (127.0.0.1)** | `compose.yaml:66-67` | Rootless-friendly binding to loopback |
+| **PostgreSQL UBI image** | `compose.yaml:5` | `quay.io/sclorg/postgresql-16-c9s:20261104` (pinned, no `latest`) |
+| **No published DB port** | `compose.yaml:4-25` | Database not exposed to host |
+| **Fully qualified tags (no latest)** | `Makefile:4-5, compose.yaml:5, 33, 63` | All base images pinned to specific versions |
+| **podman build with args** | `Makefile:49-54, scripts/manual-setup.sh:73-78` | Build with `APP_VERSION` and `BUILD_DATE` |
+| **podman run manual** | `scripts/manual-setup.sh:48-61, 83-95, 107-112` | All run parameters explicitly shown |
+| **podman network create** | `scripts/manual-setup.sh:36-39` | Manual network setup with isolation |
+| **podman secret create** | `scripts/setup-secret.sh:42` | Create secret from stdin |
+| **podman volume create** | `scripts/manual-setup.sh:43` | Named volume creation |
 | **podman save/load** | `scripts/save-image.sh:14` | Image distribution as tarball |
-| **podman generate kube** | `scripts/generate-kube.sh:12-18` | Export to Kubernetes YAML |
-| **pg_dump backup** | `scripts/backup-db.sh:15` | Database logical backup |
-| **podman volume export** | `scripts/export-volume.sh:21` | Volume backup as tarball |
-| **podman inspect --format** | `Makefile:95-99` | Extract specific JSON fields |
-| **podman events** | `Makefile:101-102` | Monitor container events |
-| **podman logs -f** | `Makefile:46, README` | Follow container logs |
-| **podman port** | `Makefile:110-111` | Show port mappings |
-| **podman exec** | `scripts/backup-db.sh:15, Makefile:107-110` | Execute commands in containers |
-| **restart policies** | `compose.yaml:23, 58, 71` | `unless-stopped` for automatic restart |
-| **healthcheck** | `Containerfile:66-67, compose.yaml:24-29, 56-62` | Container health monitoring |
-| **HEALTHCHECK in Containerfile** | `Containerfile:66-67` | Native container health check |
+| **podman generate/kube** | `scripts/generate-kube.sh:13-19` | Export to Kubernetes YAML (handles pods) |
+| **pg_dump backup** | `scripts/backup-db.sh:14` | Database logical backup |
+| **podman volume export** | `scripts/export-volume.sh:20` | Volume backup as tarball |
+| **podman inspect --format** | `Makefile:105-112` | Extract specific JSON fields |
+| **podman events** | `Makefile:114-115` | Monitor container events |
+| **podman logs -f** | `Makefile:69` | Follow container logs (podman-compose logs -f) |
+| **podman port** | `Makefile:125` | Show port mappings |
+| **podman exec** | `scripts/backup-db.sh:14, Makefile:118-128` | Execute commands (`ss -pant`, psql) |
+| **restart policies** | `compose.yaml:19, 52, 72` | `unless-stopped` for automatic restart |
+| **compose healthcheck** | `compose.yaml:20-25, 53-59` | Runtime healthchecks (pg_isready, python http) |
+| **HEALTHCHECK in Containerfile** | `Containerfile:67-68` | Native container health check (OCI format note) |
 
 ### Additional Concepts Demonstrated
 
 | Concept | Location | Description |
 |---------|----------|-------------|
 | **registries.conf concepts** | `scripts/push-image.sh` | Fully qualified registry names (quay.io, docker.io) |
-| **UBI variants** | `Containerfile:4, 20` | `ubi9/python-311` (full) → `ubi-minimal` (runtime) |
+| **UBI variants** | `Containerfile:3, 24` | `ubi9/python-311` (full) → `ubi-minimal` (runtime) |
 | **Rootless subuid** | Implicit | All commands run rootless (no sudo) |
 | **Copy-on-write layers** | `Containerfile` | Optimized layer order for caching |
-| **DB env vars on empty volume** | `README:182-188` | Init only applies to new volumes |
-| **Default network DNS issue** | `README:201-204` | User-created networks required for DNS |
-| **App binding (0.0.0.0)** | `app/main.py:174, Containerfile:70` | Listen on all interfaces in container |
-| **compose up -d/down** | `Makefile:41, 44` | Detached mode and cleanup |
-| **podman ps** | `Makefile:48` | List containers |
+| **DB env vars on empty volume** | README § "Database Initialization" | Init script runs on every start (idempotent) |
+| **Default network DNS issue** | README § "Network Topology" | User-created networks required for DNS |
+| **App binding (0.0.0.0)** | `app/main.py:210, Containerfile:71` | Listen on all interfaces in container |
+| **compose up -d/down/down -v** | `Makefile:58, 62, 65` | Detached mode, cleanup, volume cleanup |
+| **podman ps** | `Makefile:72` | List containers (podman-compose ps) |
 | **podman image prune** | Not scripted | Manual cleanup (mentioned in docs) |
+| **Neutral sentiment class** | `app/sentiment.py` | VADER compound -0.05 to 0.05 = neutral |
+
+**Note on line numbers:** These references are verified at commit HEAD. Use section names (e.g., "Database Initialization") for stable references.
 
 ## Verification & Troubleshooting
 
@@ -213,10 +217,17 @@ This project demonstrates all required concepts from Red Hat DO188 chapters 3-7:
 
 ```bash
 # Check container status
+podman-compose ps
+# OR
 podman ps
 
 # Should show 3 containers: sentiment-proxy, sentiment-api, sentiment-db
-# All should have STATUS "Up" and HEALTH "healthy"
+# All should have STATUS "Up"
+
+# Check health status (Podman 5+)
+podman inspect --format='{{.State.Health.Status}}' sentiment-db
+podman inspect --format='{{.State.Health.Status}}' sentiment-api
+# Should show "healthy" for both
 ```
 
 ### Check Logs
@@ -244,10 +255,16 @@ podman port sentiment-proxy
 ### Check Network Connectivity
 
 ```bash
-# Check what ports are listening in API container
-podman exec sentiment-api ss -tuln
+# Check network connectivity within API container
+podman exec sentiment-api curl -s http://localhost:8080/health
 
-# You should see port 8080 listening
+# Check listening ports (requires iproute package)
+podman exec sentiment-api ss -pant
+
+# Verify network isolation (proxy CANNOT reach DB by IP)
+DBIP=$(podman inspect -f '{{(index .NetworkSettings.Networks "sentiment_backend").IPAddress}}' sentiment-db)
+echo "DB IP: $DBIP"
+podman exec sentiment-proxy timeout 3 bash -c "cat < /dev/tcp/$DBIP/5432" 2>&1 || echo "✓ Isolation confirmed"
 ```
 
 ### Inspect Containers
@@ -288,9 +305,9 @@ SELECT COUNT(*) FROM reviews;
 
 ### Issue: Database not initializing
 
-**Symptom**: API can't connect to database, or init.sql not executed
+**Symptom**: API can't connect to database, or init script not executed
 
-**Cause**: Database environment variables only apply to an empty volume. If you've started the DB before with different credentials, the old data persists.
+**Cause**: Database environment variables only apply to an empty volume. If you've started the DB before with different credentials, the old data persists. The init script (`db/00-init.sh`) runs on every start but is idempotent.
 
 **Solution**:
 ```bash
@@ -390,25 +407,41 @@ open htmlcov/index.html       # macOS
 ### Run Integration Tests (requires running database)
 
 ```bash
-# Start database
+# Start all services
 make up
 
-# Run integration tests
-SKIP_INTEGRATION_TESTS=false pytest tests/test_integration.py -v
+# Run integration tests (inside backend network with DB secret)
+make test-integration
 ```
 
 ## Backup and Distribution
 
-### Backup Database
+### Backup and Restore Database
 
+**Logical Backup (pg_dump)**
 ```bash
-# Using pg_dump (logical backup)
+# Create backup
 make backup
+# Creates: backups/sentiment_db_YYYYMMDD_HHMMSS.sql.gz
 
-# Or export entire volume (physical backup)
+# Restore from backup
+podman stop sentiment-api  # Stop API to prevent connections
+zcat backups/sentiment_db_YYYYMMDD_HHMMSS.sql.gz | \
+  podman exec -i sentiment-db psql -U sentiment_user -d sentiment_db
+podman start sentiment-api
+```
+
+**Volume Backup (physical)**
+```bash
+# Create volume backup
 make backup-volume
+# Creates: backups/volume_db-data_YYYYMMDD_HHMMSS.tar
 
-# Backups are stored in ./backups/ directory
+# Restore from volume backup
+podman-compose down -v                          # Stop and remove volumes
+podman volume create sentiment_db-data          # Recreate volume
+podman volume import sentiment_db-data backups/volume_db-data_YYYYMMDD_HHMMSS.tar
+podman-compose up -d                            # Start services
 ```
 
 ### Save and Distribute Image
@@ -453,7 +486,16 @@ make generate-kube
 
 ### Live Development with Volume Mount
 
-Edit `compose.yaml` to add a bind mount for live code reloading:
+Use the development compose overlay for live code reloading:
+
+```bash
+# Start with development config
+podman-compose -f compose.yaml -f compose.dev.yaml up -d
+
+# Changes to app/*.py will trigger automatic reload
+```
+
+Or manually edit `compose.yaml` to add a bind mount:
 
 ```yaml
 api:
@@ -512,52 +554,13 @@ podman rmi localhost/sentiment-analyzer:1.0.0
 podman image prune -a
 ```
 
-## Project Structure
-
-```
-.
-├── app/
-│   ├── __init__.py           # Application package
-│   ├── main.py               # Flask app and API routes
-│   ├── sentiment.py          # VADER sentiment analysis
-│   └── templates/
-│       └── index.html        # Web UI
-├── db/
-│   └── init.sql              # Database initialization script
-├── proxy/
-│   └── nginx.conf            # Nginx reverse proxy configuration
-├── scripts/
-│   ├── setup-secret.sh       # Create Podman secret
-│   ├── manual-setup.sh       # Manual Podman setup
-│   ├── manual-stop.sh        # Stop manual setup
-│   ├── backup-db.sh          # Backup with pg_dump
-│   ├── export-volume.sh      # Export volume as tarball
-│   ├── save-image.sh         # Save image as tarball
-│   ├── generate-kube.sh      # Generate Kubernetes YAML
-│   └── push-image.sh         # Push to registry instructions
-├── tests/
-│   ├── conftest.py           # Pytest fixtures
-│   ├── test_sentiment.py     # Sentiment analysis tests
-│   ├── test_api.py           # API endpoint tests
-│   └── test_integration.py   # Integration tests
-├── Containerfile             # Multi-stage container build
-├── compose.yaml              # Podman Compose configuration
-├── Makefile                  # Convenient command shortcuts
-├── requirements.txt          # Python dependencies
-├── requirements-test.txt     # Test dependencies
-├── pytest.ini                # Pytest configuration
-├── .env.example              # Example environment variables
-├── .gitignore                # Git ignore rules
-└── README.md                 # This file
-```
-
 ## Technology Stack
 
 - **Language**: Python 3.11
 - **Web Framework**: Flask 3.1
 - **Sentiment Analysis**: VADER (vaderSentiment)
 - **Database**: PostgreSQL 16 (CentOS Stream 9 image)
-- **Container Runtime**: Podman 4.9+
+- **Container Runtime**: Podman 5.x (4.9+ compatible with caveats)
 - **Base Images**: Red Hat UBI 9
 - **Web Server**: Gunicorn
 - **Reverse Proxy**: Nginx (UBI 9)
@@ -565,7 +568,7 @@ podman image prune -a
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT License - See [LICENSE](LICENSE) file for details.
 
 ## Course Context
 
@@ -581,11 +584,17 @@ This project is designed for Red Hat DO188 4.18 (Introduction to Containers, Kub
 
 ## Screenshots
 
-![Sentiment Analyzer Web UI](docs/screenshots/main-ui.png)
-*Main web interface for sentiment analysis*
+![Web UI](docs/screenshots/web-ui.png)
+*Web interface for submitting reviews and viewing statistics*
 
-![API Response Example](docs/screenshots/api-response.png)
-*JSON API response with sentiment scores*
+![API Response](docs/screenshots/api-response.png)
+*JSON API response with detailed sentiment analysis*
+
+![Statistics Dashboard](docs/screenshots/stats.png)
+*Real-time sentiment statistics showing positive/negative/neutral percentages*
+
+![Container Architecture](docs/screenshots/architecture.png)
+*Multi-tier architecture with isolated networks*
 
 ## Contributing
 
