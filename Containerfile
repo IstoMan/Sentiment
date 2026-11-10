@@ -20,6 +20,14 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN python -c "from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer; SentimentIntensityAnalyzer()" && \
     echo "VADER lexicon downloaded and cached"
 
+# Stage 1.5: Test stage with test dependencies
+FROM builder AS test
+
+COPY requirements-test.txt .
+RUN pip install --no-cache-dir -r requirements-test.txt
+
+COPY tests/ ./tests/
+
 # Stage 2: Runtime - minimal image with application
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1794186349 AS runtime
 
@@ -67,5 +75,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python3.11 -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health').read()" || exit 1
 
-ENTRYPOINT ["gunicorn"]
-CMD ["--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+ENTRYPOINT ["sh", "-c"]
+CMD ["exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 60 --access-logfile - --error-logfile - app:app"]

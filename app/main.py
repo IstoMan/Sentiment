@@ -13,7 +13,8 @@ from psycopg2.extras import RealDictCursor
 from .sentiment import SentimentAnalyzer, preprocess_text
 
 app = Flask(__name__)
-CORS(app)
+# Restrict CORS to same-origin (UI served through proxy on same domain)
+# CORS(app, origins=["http://127.0.0.1:8000"])
 
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
@@ -119,6 +120,9 @@ def analyze_review():
     if data is None:
         return jsonify({'error': 'Invalid JSON or unsupported content type'}), 400
     
+    if not isinstance(data, dict):
+        return jsonify({'error': 'JSON object required'}), 400
+    
     if 'text' not in data:
         return jsonify({'error': 'Missing required field: text'}), 400
     
@@ -149,7 +153,7 @@ def analyze_review():
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING id''',
                 (text, preprocessed, result['sentiment'], result['compound'], 
-                 result['positive'], result['negative'], result['neutral'], datetime.now(datetime.UTC))
+                 result['positive'], result['negative'], result['neutral'], datetime.now(timezone.utc))
             )
             review_id = cursor.fetchone()[0]
             conn.commit()
@@ -164,8 +168,10 @@ def analyze_review():
         finally:
             conn.close()
     except psycopg2.Error as e:
+        app.logger.exception("Database error in analyze_review")
         return jsonify({'error': 'Database error', 'detail': str(e)}), 503
     except Exception as e:
+        app.logger.exception("Internal server error in analyze_review")
         return jsonify({'error': 'Internal server error'}), 500
 
 
@@ -205,8 +211,10 @@ def get_reviews():
         finally:
             conn.close()
     except psycopg2.Error as e:
+        app.logger.exception("Database error in get_reviews")
         return jsonify({'error': 'Database error', 'detail': str(e)}), 503
     except Exception as e:
+        app.logger.exception("Internal server error in get_reviews")
         return jsonify({'error': 'Internal server error'}), 500
 
 
@@ -248,8 +256,10 @@ def get_stats():
         finally:
             conn.close()
     except psycopg2.Error as e:
+        app.logger.exception("Database error in get_stats")
         return jsonify({'error': 'Database error', 'detail': str(e)}), 503
     except Exception as e:
+        app.logger.exception("Internal server error in get_stats")
         return jsonify({'error': 'Internal server error'}), 500
 
 

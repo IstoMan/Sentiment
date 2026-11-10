@@ -9,7 +9,7 @@ DB_SECRET_NAME="db_password"
 
 NETWORK_FRONTEND="${PROJECT_NAME}_frontend"
 NETWORK_BACKEND="${PROJECT_NAME}_backend"
-VOLUME_DATA="${PROJECT_NAME}_db_data"
+VOLUME_DATA="${PROJECT_NAME}_db-data"
 
 DB_USER="${DB_USER:-sentiment_user}"
 DB_NAME="${DB_NAME:-sentiment_db}"
@@ -82,7 +82,7 @@ echo ""
 echo "Step 5: Starting application..."
 podman run -d \
     --name "${PROJECT_NAME}-api" \
-    --network "$NETWORK_FRONTEND" \
+    --network "$NETWORK_FRONTEND":alias=api \
     --network "$NETWORK_BACKEND" \
     -e DB_HOST="${PROJECT_NAME}-db" \
     -e DB_PORT=5432 \
@@ -90,13 +90,23 @@ podman run -d \
     -e DB_USER="$DB_USER" \
     -e DB_PASSWORD_FILE="/run/secrets/db_password" \
     -e PORT=8080 \
+    -e WAIT_FOR_DB=1 \
     --secret "$DB_SECRET_NAME" \
     --restart unless-stopped \
+    --health-cmd 'curl -fsS http://localhost:8080/health || exit 1' \
+    --health-interval 10s \
     "$IMAGE_NAME"
 
 echo "Waiting for application to be ready..."
-sleep 5
-echo "✓ Application started"
+for i in {1..30}; do
+    if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
+        echo "✓ Application is healthy"
+        break
+    fi
+    echo -n "."
+    sleep 2
+done
+echo ""
 
 echo ""
 echo "Step 6: Building and starting proxy..."

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Database initialization script
-set -e
+# Note: Do not use 'set -e' as this script is sourced by postgresql-start hooks
 
 # Wait for postgres to be ready
 until pg_isready -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" > /dev/null 2>&1; do
-  sleep 1
+    sleep 1
 done
 
 # Run init SQL
