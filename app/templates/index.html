@@ -4,247 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sentiment Analyzer for Reviews</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            color: white;
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 120px;
-            transition: border-color 0.3s;
-        }
-        
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .result {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            border-radius: 8px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .result.positive {
-            background-color: #d4edda;
-            border: 2px solid #28a745;
-        }
-        
-        .result.negative {
-            background-color: #f8d7da;
-            border: 2px solid #dc3545;
-        }
-        
-        .result.neutral {
-            background-color: #fff3cd;
-            border: 2px solid #ffc107;
-        }
-        
-        .result h3 {
-            margin-bottom: 10px;
-            font-size: 1.3rem;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        
-        .reviews-list {
-            margin-top: 20px;
-        }
-        
-        .review-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            background: #f8f9fa;
-        }
-        
-        .review-sentiment {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-        
-        .review-sentiment.positive {
-            background-color: #28a745;
-            color: white;
-        }
-        
-        .review-sentiment.negative {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        .review-sentiment.neutral {
-            background-color: #ffc107;
-            color: #333;
-        }
-        
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma.min.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>📊 Sentiment Analyzer</h1>
-        
-        <div class="card">
-            <h2>Analyze a Review</h2>
-            <form id="analyzeForm">
-                <div class="form-group">
-                    <label for="reviewText">Enter your review:</label>
-                    <textarea id="reviewText" name="text" placeholder="Type your product or movie review here..." required></textarea>
+    <section class="section is-fullheight has-background-link">
+        <div class="container is-max-desktop">
+            <h1 class="title is-2 has-text-white has-text-centered mb-5">📊 Sentiment Analyzer</h1>
+
+            <div class="box mb-5">
+                <h2 class="title is-4">Analyze a Review</h2>
+                <form id="analyzeForm">
+                    <div class="field">
+                        <label class="label" for="reviewText">Enter your review:</label>
+                        <div class="control">
+                            <textarea id="reviewText" name="text" class="textarea" placeholder="Type your product or movie review here..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <button type="submit" id="submitBtn" class="button is-link">Analyze Sentiment</button>
+                        </div>
+                    </div>
+                </form>
+                <div id="result" class="notification is-hidden"></div>
+            </div>
+
+            <div class="box mb-5">
+                <h2 class="title is-4">Statistics</h2>
+                <div id="stats" class="columns is-multiline">
+                    <div class="column">
+                        <p class="has-text-grey">Loading statistics...</p>
+                    </div>
                 </div>
-                <button type="submit" id="submitBtn">Analyze Sentiment</button>
-            </form>
-            
-            <div id="result" class="result"></div>
-        </div>
-        
-        <div class="card">
-            <h2>Statistics</h2>
-            <div id="stats" class="stats-grid">
-                <div class="loading">Loading statistics...</div>
+            </div>
+
+            <div class="box">
+                <h2 class="title is-4">Recent Reviews</h2>
+                <div id="reviews">
+                    <p class="has-text-grey">Loading reviews...</p>
+                </div>
             </div>
         </div>
-        
-        <div class="card">
-            <h2>Recent Reviews</h2>
-            <div id="reviews" class="reviews-list">
-                <div class="loading">Loading reviews...</div>
-            </div>
-        </div>
-    </div>
-    
+    </section>
+
     <script>
         const API_BASE = '/api';
-        
+        const SENTIMENT_COLOR = {
+            positive: 'is-success',
+            negative: 'is-danger',
+            neutral: 'is-warning'
+        };
+
         function escapeHtml(text) {
             return String(text)
                 .replace(/&/g, '&amp;')
@@ -253,23 +63,37 @@
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
         }
-        
+
+        function sentimentColor(sentiment) {
+            return SENTIMENT_COLOR[sentiment] || 'is-light';
+        }
+
+        function showResult(resultDiv, color, html) {
+            resultDiv.className = `notification ${color}`;
+            resultDiv.innerHTML = html;
+        }
+
+        function hideResult(resultDiv) {
+            resultDiv.className = 'notification is-hidden';
+            resultDiv.innerHTML = '';
+        }
+
         document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const text = document.getElementById('reviewText').value.trim();
             const submitBtn = document.getElementById('submitBtn');
             const resultDiv = document.getElementById('result');
-            
+
             if (!text) {
                 alert('Please enter some text');
                 return;
             }
-            
+
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Analyzing...';
-            resultDiv.style.display = 'none';
-            
+            submitBtn.classList.add('is-loading');
+            hideResult(resultDiv);
+
             try {
                 const response = await fetch(`${API_BASE}/analyze`, {
                     method: 'POST',
@@ -278,97 +102,112 @@
                     },
                     body: JSON.stringify({ text })
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
-                resultDiv.className = `result ${escapeHtml(data.sentiment)}`;
-                resultDiv.innerHTML = `
-                    <h3>Sentiment: ${escapeHtml(data.sentiment).toUpperCase()}</h3>
+
+                showResult(resultDiv, sentimentColor(data.sentiment), `
+                    <p class="title is-5">Sentiment: ${escapeHtml(data.sentiment).toUpperCase()}</p>
                     <p><strong>Compound Score:</strong> ${data.compound.toFixed(4)}</p>
-                    <p><strong>Positive:</strong> ${(data.positive * 100).toFixed(1)}% | 
-                       <strong>Negative:</strong> ${(data.negative * 100).toFixed(1)}% | 
+                    <p><strong>Positive:</strong> ${(data.positive * 100).toFixed(1)}% |
+                       <strong>Negative:</strong> ${(data.negative * 100).toFixed(1)}% |
                        <strong>Neutral:</strong> ${(data.neutral * 100).toFixed(1)}%</p>
-                `;
-                resultDiv.style.display = 'block';
-                
+                `);
+
                 document.getElementById('reviewText').value = '';
-                
+
                 loadStats();
                 loadReviews();
             } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
-                resultDiv.style.display = 'block';
+                showResult(resultDiv, 'is-danger', `<strong>Error:</strong> ${escapeHtml(error.message)}`);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Analyze Sentiment';
+                submitBtn.classList.remove('is-loading');
             }
         });
-        
+
+        function statTile(value, label, color) {
+            return `
+                <div class="column is-half-tablet is-one-quarter-desktop">
+                    <div class="notification ${color} has-text-centered mb-0">
+                        <p class="title is-3">${value}</p>
+                        <p>${label}</p>
+                    </div>
+                </div>
+            `;
+        }
+
         async function loadStats() {
             const statsDiv = document.getElementById('stats');
-            
+
             try {
                 const response = await fetch(`${API_BASE}/stats`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
-                
-                statsDiv.innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${data.total_reviews}</div>
-                        <div class="stat-label">Total Reviews</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.positive_percentage}%</div>
-                        <div class="stat-label">Positive</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.negative_percentage}%</div>
-                        <div class="stat-label">Negative</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.neutral_percentage}%</div>
-                        <div class="stat-label">Neutral</div>
-                    </div>
-                `;
+
+                statsDiv.innerHTML = [
+                    statTile(data.total_reviews, 'Total Reviews', 'is-link'),
+                    statTile(`${data.positive_percentage}%`, 'Positive', 'is-success'),
+                    statTile(`${data.negative_percentage}%`, 'Negative', 'is-danger'),
+                    statTile(`${data.neutral_percentage}%`, 'Neutral', 'is-warning')
+                ].join('');
             } catch (error) {
-                statsDiv.innerHTML = `<div class="error">Failed to load statistics</div>`;
+                statsDiv.innerHTML = '<div class="notification is-danger mb-0">Failed to load statistics</div>';
             }
         }
-        
+
         async function loadReviews() {
             const reviewsDiv = document.getElementById('reviews');
-            
+
             try {
                 const response = await fetch(`${API_BASE}/reviews?limit=10`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
-                
+
                 if (data.reviews.length === 0) {
-                    reviewsDiv.innerHTML = '<p>No reviews yet. Be the first to analyze one!</p>';
+                    reviewsDiv.innerHTML = '<p class="has-text-grey">No reviews yet. Be the first to analyze one!</p>';
                     return;
                 }
-                
-                reviewsDiv.innerHTML = data.reviews.map(review => `
-                    <div class="review-item">
-                        <div>
-                            <span class="review-sentiment ${escapeHtml(review.sentiment)}">${escapeHtml(review.sentiment)}</span>
-                            <small style="float: right; color: #666;">${new Date(review.created_at).toLocaleString()}</small>
+
+                reviewsDiv.innerHTML = data.reviews.map(review => {
+                    const preview = review.original_text.length > 200
+                        ? `${review.original_text.substring(0, 200)}...`
+                        : review.original_text;
+                    const when = new Date(review.created_at).toLocaleString();
+                    return `
+                        <div class="block">
+                            <div class="level is-mobile mb-2">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <span class="tag ${sentimentColor(review.sentiment)}">${escapeHtml(review.sentiment)}</span>
+                                    </div>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        <span class="is-size-7 has-text-grey">${escapeHtml(when)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="mb-2">${escapeHtml(preview)}</p>
+                            <p class="is-size-7 has-text-grey">Score: ${Number(review.compound_score).toFixed(4)}</p>
                         </div>
-                        <p style="margin-top: 10px;">${escapeHtml(review.original_text.substring(0, 200))}${review.original_text.length > 200 ? '...' : ''}</p>
-                        <small style="color: #666;">Score: ${review.compound_score.toFixed(4)}</small>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
-                reviewsDiv.innerHTML = `<div class="error">Failed to load reviews</div>`;
+                reviewsDiv.innerHTML = '<div class="notification is-danger mb-0">Failed to load reviews</div>';
             }
         }
-        
+
         loadStats();
         loadReviews();
-        
+
         setInterval(() => {
             loadStats();
             loadReviews();
