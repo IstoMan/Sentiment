@@ -178,7 +178,9 @@ class TestIndexPage:
         assert '/static/css/bulma.min.css' in html
         assert '<style' not in html.lower()
         assert 'style=' not in html.lower()
-        assert 'class="button is-link"' in html
+        assert 'data-theme="light"' in html
+        assert 'class="button is-primary"' in html
+        assert 'has-background-link' not in html
         assert 'class="textarea"' in html
         assert 'class="columns is-multiline"' in html
 

@@ -1,15 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sentiment Analyzer for Reviews</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma.min.css') }}">
 </head>
-<body>
-    <section class="section is-fullheight has-background-link">
+<body class="has-background-light">
+    <nav class="navbar is-white" aria-label="main">
         <div class="container is-max-desktop">
-            <h1 class="title is-2 has-text-white has-text-centered mb-5">📊 Sentiment Analyzer</h1>
+            <div class="navbar-brand">
+                <span class="navbar-item is-size-4 has-text-weight-bold has-text-primary">📊 Sentiment Analyzer</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container is-max-desktop">
 
             <div class="box mb-5">
                 <h2 class="title is-4">Analyze a Review</h2>
@@ -22,7 +29,7 @@
                     </div>
                     <div class="field">
                         <div class="control">
-                            <button type="submit" id="submitBtn" class="button is-link">Analyze Sentiment</button>
+                            <button type="submit" id="submitBtn" class="button is-primary">Analyze Sentiment</button>
                         </div>
                     </div>
                 </form>
@@ -49,10 +56,10 @@
 
     <script>
         const API_BASE = '/api';
-        const SENTIMENT_COLOR = {
-            positive: 'is-success',
-            negative: 'is-danger',
-            neutral: 'is-warning'
+        const SENTIMENT_PALETTE = {
+            positive: 'success',
+            negative: 'danger',
+            neutral: 'warning'
         };
 
         function escapeHtml(text) {
@@ -64,12 +71,12 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function sentimentColor(sentiment) {
-            return SENTIMENT_COLOR[sentiment] || 'is-light';
+        function paletteName(sentiment) {
+            return SENTIMENT_PALETTE[sentiment] || 'primary';
         }
 
-        function showResult(resultDiv, color, html) {
-            resultDiv.className = `notification ${color}`;
+        function showResult(resultDiv, name, html) {
+            resultDiv.className = `notification has-background-${name}-soft`;
             resultDiv.innerHTML = html;
         }
 
@@ -108,11 +115,12 @@
                 }
 
                 const data = await response.json();
+                const tone = paletteName(data.sentiment);
 
-                showResult(resultDiv, sentimentColor(data.sentiment), `
-                    <p class="title is-5">Sentiment: ${escapeHtml(data.sentiment).toUpperCase()}</p>
-                    <p><strong>Compound Score:</strong> ${data.compound.toFixed(4)}</p>
-                    <p><strong>Positive:</strong> ${(data.positive * 100).toFixed(1)}% |
+                showResult(resultDiv, tone, `
+                    <p class="title is-5 has-text-${tone}-bold">Sentiment: ${escapeHtml(data.sentiment).toUpperCase()}</p>
+                    <p class="has-text-${tone}-bold"><strong>Compound Score:</strong> ${data.compound.toFixed(4)}</p>
+                    <p class="has-text-${tone}-bold"><strong>Positive:</strong> ${(data.positive * 100).toFixed(1)}% |
                        <strong>Negative:</strong> ${(data.negative * 100).toFixed(1)}% |
                        <strong>Neutral:</strong> ${(data.neutral * 100).toFixed(1)}%</p>
                 `);
@@ -122,19 +130,19 @@
                 loadStats();
                 loadReviews();
             } catch (error) {
-                showResult(resultDiv, 'is-danger', `<strong>Error:</strong> ${escapeHtml(error.message)}`);
+                showResult(resultDiv, 'danger', `<p class="has-text-danger-bold"><strong>Error:</strong> ${escapeHtml(error.message)}</p>`);
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('is-loading');
             }
         });
 
-        function statTile(value, label, color) {
+        function statTile(value, label, name) {
             return `
                 <div class="column is-half-tablet is-one-quarter-desktop">
-                    <div class="notification ${color} has-text-centered mb-0">
-                        <p class="title is-3">${value}</p>
-                        <p>${label}</p>
+                    <div class="notification has-background-${name}-soft has-text-centered mb-0">
+                        <p class="title is-3 has-text-${name}-bold">${value}</p>
+                        <p class="has-text-${name}-bold">${label}</p>
                     </div>
                 </div>
             `;
@@ -151,13 +159,13 @@
                 const data = await response.json();
 
                 statsDiv.innerHTML = [
-                    statTile(data.total_reviews, 'Total Reviews', 'is-link'),
-                    statTile(`${data.positive_percentage}%`, 'Positive', 'is-success'),
-                    statTile(`${data.negative_percentage}%`, 'Negative', 'is-danger'),
-                    statTile(`${data.neutral_percentage}%`, 'Neutral', 'is-warning')
+                    statTile(data.total_reviews, 'Total Reviews', 'primary'),
+                    statTile(`${data.positive_percentage}%`, 'Positive', 'success'),
+                    statTile(`${data.negative_percentage}%`, 'Negative', 'danger'),
+                    statTile(`${data.neutral_percentage}%`, 'Neutral', 'warning')
                 ].join('');
             } catch (error) {
-                statsDiv.innerHTML = '<div class="notification is-danger mb-0">Failed to load statistics</div>';
+                statsDiv.innerHTML = '<div class="notification has-background-danger-soft mb-0"><p class="has-text-danger-bold">Failed to load statistics</p></div>';
             }
         }
 
@@ -181,12 +189,13 @@
                         ? `${review.original_text.substring(0, 200)}...`
                         : review.original_text;
                     const when = new Date(review.created_at).toLocaleString();
+                    const tone = paletteName(review.sentiment);
                     return `
                         <div class="block">
                             <div class="level is-mobile mb-2">
                                 <div class="level-left">
                                     <div class="level-item">
-                                        <span class="tag ${sentimentColor(review.sentiment)}">${escapeHtml(review.sentiment)}</span>
+                                        <span class="tag has-background-${tone}-soft has-text-${tone}-bold">${escapeHtml(review.sentiment)}</span>
                                     </div>
                                 </div>
                                 <div class="level-right">
@@ -201,7 +210,7 @@
                     `;
                 }).join('');
             } catch (error) {
-                reviewsDiv.innerHTML = '<div class="notification is-danger mb-0">Failed to load reviews</div>';
+                reviewsDiv.innerHTML = '<div class="notification has-background-danger-soft mb-0"><p class="has-text-danger-bold">Failed to load reviews</p></div>';
             }
         }
 
