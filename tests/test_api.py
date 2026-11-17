@@ -170,10 +170,19 @@ class TestIndexPage:
     """Test main page"""
     
     def test_index_page(self, app_client):
-        """Test that index page loads"""
+        """Test that index page loads with Bulma and no custom CSS"""
         response = app_client.get('/')
         assert response.status_code == 200
-        assert b'Sentiment Analyzer' in response.data
+        html = response.data.decode('utf-8')
+        assert 'Sentiment Analyzer' in html
+        assert '/static/css/bulma.min.css' in html
+        assert '<style' not in html.lower()
+        assert 'style=' not in html.lower()
+        assert 'data-theme="light"' in html
+        assert 'class="button is-primary"' in html
+        assert 'has-background-link' not in html
+        assert 'class="textarea"' in html
+        assert 'class="columns is-multiline"' in html
 
 
 class TestInputValidation:

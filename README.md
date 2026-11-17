@@ -570,6 +570,7 @@ podman image prune -a
 
 - **Language**: Python 3.11
 - **Web Framework**: Flask 3.1
+- **CSS**: Bulma 1.0.4 (vendored, no custom stylesheet)
 - **Sentiment Analysis**: VADER (vaderSentiment)
 - **Database**: PostgreSQL 16 (CentOS Stream 9 image)
 - **Container Runtime**: Podman 5.x (4.9+ compatible with caveats)
